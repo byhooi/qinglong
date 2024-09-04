@@ -7,7 +7,9 @@ import json
 import re
 import os
 import ssl
-from shufflewzc_faker3.sendNotify import send
+import importlib
+sendNotify = importlib.import_module('6dylan6_jdpro.sendNotify')
+send = sendNotify.send
 
 
 # 青龙变量 cjwlhck  

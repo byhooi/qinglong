@@ -1,5 +1,5 @@
 const axios = require('axios');
-const notify = require('./shufflewzc_faker3/sendNotify');
+const notify = require('./6dylan6_jdpro/sendNotify');
 
 // 从环境变量获取 mkey 和 token
 const Mkey = process.env.MixPark_MKEY;

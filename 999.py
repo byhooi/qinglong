@@ -12,7 +12,9 @@ import os
 from datetime import datetime
 
 # 导入sendNotify函数
-from shufflewzc_faker3.sendNotify import send
+import importlib
+sendNotify = importlib.import_module('6dylan6_jdpro.sendNotify')
+send = sendNotify.send
 
 #微信扫码 https://pic.imgdb.cn/item/664c0ef9d9c307b7e9fabfc4.png 这个图片(走下我邀请) 注册登录后抓mc.999.com.cn域名请求头里面的Authorization 变量名为jjjck 多号用#分割
 #export jjjck='807b3cc1-3473-4baa-b038-********'
