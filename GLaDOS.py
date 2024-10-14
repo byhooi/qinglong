@@ -4,7 +4,7 @@
 """
 File: checkin.py(GLaDOS签到)
 Author: Hennessey
-cron: 40 0 * * *
+cron: "40 0 * * *"
 new Env('GLaDOS签到');
 Update: 2023/7/27
 """

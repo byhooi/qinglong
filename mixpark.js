@@ -1,5 +1,7 @@
 const axios = require('axios');
 const notify = require('./6dylan6_jdpro/sendNotify');
+cron "1 0 * * *"
+const $ = new Env('MixPark签到')
 
 // 从环境变量获取 mkey 和 token
 const Mkey = process.env.MixPark_MKEY;

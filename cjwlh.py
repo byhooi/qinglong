@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -- coding: utf-8 -- 
-# cron "15 15 6,10,15 * * *" script-path=xxx.py,tag=匹配cron用
-# const $ = new Env('春茧未来荟')
+cron "5 8 * * *"
+const $ = new Env('春茧未来荟')
 import requests
 import json
 import re
@@ -45,7 +45,9 @@ for i in range(len(cookielist)):
             send("春茧未来荟签到失败", message)
         else:
             point = result['result']['listSignInRuleData'][0]['point']
-            print(f'签到成功获得万象星：{str(point)}个')
+            success_msg = f'第{i+1}个账号签到成功获得万象星：{str(point)}个'
+            print(success_msg)
+            send("春茧未来荟签到成功", success_msg)
     except Exception as e:
         error_msg = f'第{i+1}个账号失效或遇到错误: {str(e)}'
         print(error_msg)
