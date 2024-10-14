@@ -1,7 +1,7 @@
-const axios = require('axios');
-const notify = require('./6dylan6_jdpro/sendNotify');
-cron "1 0 * * *"
+// cron "1 0 * * *"
 const $ = new Env('MixPark签到')
+const axios = require('axios');
+const notify = require('./sendNotify');
 
 // 从环境变量获取 mkey 和 token
 const Mkey = process.env.MixPark_MKEY;
@@ -49,7 +49,7 @@ async function main() {
 
     console.log(message);
     
-    // 使用青龙面板的 sendNotify 发送通知
+    // 使用本地的 sendNotify 发送通知
     await notify.sendNotify("MixPark签到结果", message);
 }
 

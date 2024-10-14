@@ -4,8 +4,10 @@
 # @Author : github@wd210010 https://github.com/wd210010/only_for_happly
 # @Time : 2024/05/321 9:23
 # -------------------------------
-# cron "0 3 * * *"
-# const $ = new Env('999会员中心')
+"""
+cron: "3 8 * * *"
+new Env('999会员中心');
+"""
 import requests
 import time
 import json
@@ -14,9 +16,7 @@ import os
 from datetime import datetime
 
 # 导入sendNotify函数
-import importlib
-sendNotify = importlib.import_module('6dylan6_jdpro.sendNotify')
-send = sendNotify.send
+from sendNotify import send
 
 #微信扫码 https://pic.imgdb.cn/item/664c0ef9d9c307b7e9fabfc4.png 这个图片(走下我邀请) 注册登录后抓mc.999.com.cn域名请求头里面的Authorization 变量名为jjjck 多号用#分割
 #export jjjck='807b3cc1-3473-4baa-b038-********'

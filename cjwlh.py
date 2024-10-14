@@ -1,15 +1,16 @@
 #!/usr/bin/python3
 # -- coding: utf-8 -- 
-cron "5 8 * * *"
-const $ = new Env('春茧未来荟')
+"""
+cron: "35 8 * * *"
+new Env('春茧未来荟');
+"""
 import requests
 import json
 import re
 import os
 import ssl
 import importlib
-sendNotify = importlib.import_module('6dylan6_jdpro.sendNotify')
-send = sendNotify.send
+from sendNotify import send
 
 
 # 青龙变量 cjwlhck  

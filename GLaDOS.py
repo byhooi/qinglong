@@ -39,13 +39,9 @@ def get_cookies():
 
 # 加载通知服务
 def load_send():
-    cur_path = os.path.abspath(os.path.dirname(__file__))
-    sys.path.append(cur_path)
-    # 使用 importlib 动态导入模块
     try:
-        import importlib
-        notify_module = importlib.import_module('6dylan6_jdpro.sendNotify')
-        return notify_module.send
+        from sendNotify import send
+        return send
     except Exception as e:
         print(f"加载通知服务失败：{e}")
         return None

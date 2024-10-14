@@ -4,16 +4,16 @@
 # @Author : github@wd210010 https://github.com/wd210010/just_for_happy
 # @Time : 2023/2/27 13:23
 # -------------------------------
-cron "1 8 * * *"
-const $ = new Env('一点万象签到')
+"""
+cron: "1 8 * * *"
+new Env('一点万象签到');
+"""
 import requests
 import time
 import hashlib
 import json
 import os
-import importlib
-sendNotify = importlib.import_module('6dylan6_jdpro.sendNotify')
-send = sendNotify.send
+from sendNotify import send
 
 # 登录后搜索 https://app.mixcapp.com/mixc/gateway 域名随意一个 请求体里面的deviceParams，token 多账号填多个单引号里面 用英文逗号隔开
 # 青龙变量 ydwx_deviceParams ydwx_token
