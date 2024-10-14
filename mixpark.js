@@ -1,8 +1,9 @@
 /**
- * 钧濠MixPark签到
  * cron: 1 0 * * *
  */
 
+const { Env } = require('./byhooi_qinglong/mixpark.js');
+const $ = new Env('钧濠MixPark签到');
 const axios = require('axios');
 const notify = require('./sendNotify');
 
