@@ -1,5 +1,7 @@
-// @name MixPark签到
-// @cron "1 0 * * *"
+/**
+ * @name MixPark签到
+ * @cron 1 0 * * *
+*/
 const axios = require('axios');
 const notify = require('./sendNotify');
 
