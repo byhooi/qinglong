@@ -1,5 +1,5 @@
-// cron "1 0 * * *"
-const $ = new Env('MixPark签到')
+// @name MixPark签到
+// @cron "1 0 * * *"
 const axios = require('axios');
 const notify = require('./sendNotify');
 
