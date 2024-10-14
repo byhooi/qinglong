@@ -2,7 +2,6 @@
  * cron: 1 0 * * *
  */
 
-const $ = new Env('钧濠MixPark签到');
 const axios = require('axios');
 const notify = require('./sendNotify');
 
