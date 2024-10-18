@@ -89,33 +89,6 @@ for i in range(len(jjck)):
             except:
                 print('请检查抓包是否准确 个别青龙版本运行不了')
                 continue
-        #阅读文章
-        for i in range(5):
-            print('开始阅读')
-            data_read = {"type":"explore_health_knowledge","params":{"articleCode":str(random.randint(1, 20))}}
-            resp_read = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
-                                             headers=headers, json=data_read)
-            point=int(json.loads(resp_read.text)['data']['point'])
-            message = f'阅读成功！获得{point}积分'
-            print(message)
-            success_messages.append(message)
-            total_points += point
-        #体检
-        for i in range(3):
-            h_test ={"gender":"1","age":"17","height":"188","weight":"50","waist":"55","hip":"55","food":{"breakfast":"1","dietHabits":["1"],"foodPreference":"1"},"life":{"livingCondition":["1"],"livingHabits":["1"]},"exercise":{"exerciseTimesWeekly":"1"},"mental":{"mentalState":["2"]},"body":{"bodyStatus":["2"],"oralStatus":"1","fruitReact":"1","skinCondition":["1"],"afterMealReact":"2","defecation":"2"},"sick":{"bloating":"2","burp":"2","fart":"3","gurgle":"3","stomachache":"2","behindSternum":"4","ThroatOrMouthAcid":"4","FoodReflux":"4","auseaOrVomiting":"4"},"other":{"familyProducts":["5"]}}
-            resp_htest = requests.post('https://mc.999.com.cn/zanmall_diy/ma/health/add',
-                                      headers=headers, json=h_test)
-            referNo = json.loads(resp_htest.text)['data']['referNo']
-            print(referNo)
-            data_h_test = {"type":"complete_health_testing","params":{"testCode":f"{referNo}"}}
-            resp_h_test = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
-                                      headers=headers, json=data_h_test)
-            point = int(json.loads(resp_h_test.text)['data']['point'])
-            message = f'体检成功！获得{point}积分'
-            print(message)
-            success_messages.append(message)
-            total_points += point
-            time.sleep(5)
 
         try:
             resp = requests.get('https://mc.999.com.cn/zanmall_diy/ma/personal/point/pointInfo', headers=headers)
