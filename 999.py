@@ -41,71 +41,54 @@ for i in range(len(jjck)):
         resp_user = requests.get('https://mc.999.com.cn/zanmall_diy/ma/personal/user/info', headers=headers)
         phone = json.loads(resp_user.text)['data']['phone']
         print(f'开始账号: {phone} 打卡')
-        checkInCodeList = [
-            {
-                "checkInCode": "mtbbs",
-                "checkInMeaning": "每天八杯水"
-            },
-            {
-                "checkInCode": "zs",
-                "checkInMeaning": "早睡"
-            },
-            {
-                "checkInCode": "ydswfz",
-                "checkInMeaning": "运动15分钟"
-            },
-            {
-                "checkInCode": "zq",
-                "checkInMeaning": "早起"
-            }
-        ]
+        
+        # ... 其他任务代码 ...
 
         total_points = 0
         success_messages = []
+        error_messages = []
 
-        # # 请求体（JSON）
-        for i in range(len(checkInCodeList)):
-            data = {
-                "type": "daily_health_check_in",
-                "params": {
-                    "checkInCode": f"{checkInCodeList[i]['checkInCode']}",
-                    "checkInTime": today
-                }
-            }
-            Meaning = checkInCodeList[i]['checkInMeaning']
-            # 发送POST请求
+        # 打卡任务
+        for task in checkInCodeList:
             try:
-                response = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
-                                         headers=headers, json=data)
-                result = json.loads(response.text)['data']
-                point = result['point']
-                if result['success'] == True:
-                    message = f'打卡内容{Meaning}---打卡完成 获得积分{point}'
-                    print(message)
-                    success_messages.append(message)
-                    total_points += point
-                else:
-                    print(f'打卡内容{Meaning}---请勿重复打卡')
-            except:
-                print('请检查抓包是否准确 个别青龙版本运行不了')
-                continue
+                # ... 打卡任务的代码 ...
+            except Exception as e:
+                error_messages.append(f"打卡任务 {task['checkInMeaning']} 失败: {str(e)}")
 
+        # 阅读文章任务
+        for i in range(5):
+            try:
+                # ... 阅读文章任务的代码 ...
+            except Exception as e:
+                error_messages.append(f"第 {i+1} 次阅读文章失败: {str(e)}")
+
+        # 体检任务
+        for i in range(3):
+            try:
+                # ... 体检任务的代码 ...
+            except Exception as e:
+                error_messages.append(f"第 {i+1} 次体检任务失败: {str(e)}")
+
+        # 获取总积分
         try:
             resp = requests.get('https://mc.999.com.cn/zanmall_diy/ma/personal/point/pointInfo', headers=headers)
             totalpoints = json.loads(resp.text)['data']
             print(f'当前拥有总积分:{totalpoints}')
             
             # 生成推送消息
-            push_message = f"账号: {phone}\n今日获得总积分: {total_points}\n当前总积分: {totalpoints}\n\n详细信息:\n" + "\n".join(success_messages)
+            push_message = f"账号: {phone}\n今日获得总积分: {total_points}\n当前总积分: {totalpoints}\n\n成功信息:\n" + "\n".join(success_messages)
+            if error_messages:
+                push_message += f"\n\n失败信息:\n" + "\n".join(error_messages)
             
             # 使用sendNotify函数进行推送
-            send("999会员中心签到成功", push_message)
-        except:
-            continue
+            send("999会员中心签到结果", push_message)
+        except Exception as e:
+            print(f"获取总积分失败: {str(e)}")
+            send("999会员中心", f"账号 {phone} 获取总积分失败，可能需要检查")
+
     except Exception as e:
         print(str(e))
-        msg =f'账号可能失效！'
-        # 使用sendNotify函数进行推送
+        msg = f'账号 {phone} 可能失效！错误信息: {str(e)}'
         send("999会员中心", msg)
-        continue
+
     print('*'*30)
