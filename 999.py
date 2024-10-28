@@ -41,14 +41,29 @@ for i in range(len(jjck)):
         resp_user = requests.get('https://mc.999.com.cn/zanmall_diy/ma/personal/user/info', headers=headers)
         phone = json.loads(resp_user.text)['data']['phone']
         print(f'开始账号: {phone} 打卡')
-        
-        # ... 其他任务代码 ...
+        checkInCodeList = [
+            {
+                "checkInCode": "mtbbs",
+                "checkInMeaning": "每天八杯水"
+            },
+            {
+                "checkInCode": "zs",
+                "checkInMeaning": "早睡"
+            },
+            {
+                "checkInCode": "ydswfz",
+                "checkInMeaning": "运动15分钟"
+            },
+            {
+                "checkInCode": "zq",
+                "checkInMeaning": "早起"
+            }
+        ]
 
         total_points = 0
         success_messages = []
-        error_messages = []
 
-        # 打卡任务
+        # # 请求体（JSON）
         for i in range(len(checkInCodeList)):
             data = {
                 "type": "daily_health_check_in",
@@ -58,9 +73,10 @@ for i in range(len(jjck)):
                 }
             }
             Meaning = checkInCodeList[i]['checkInMeaning']
+            # 发送POST请求
             try:
                 response = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
-                                      headers=headers, json=data)
+                                         headers=headers, json=data)
                 result = json.loads(response.text)['data']
                 point = result['point']
                 if result['success'] == True:
@@ -70,67 +86,53 @@ for i in range(len(jjck)):
                     total_points += point
                 else:
                     print(f'打卡内容{Meaning}---请勿重复打卡')
-            except Exception as e:
-                error_messages.append(f"打卡任务 {Meaning} 失败: {str(e)}")
+            except:
+                print('请检查抓包是否准确 个别青龙版本运行不了')
                 continue
-
-        # 阅读文章
+        #阅读文章
         for i in range(5):
-            try:
-                print('开始阅读')
-                data_read = {"type":"explore_health_knowledge","params":{"articleCode":str(random.randint(1, 20))}}
-                resp_read = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
-                                      headers=headers, json=data_read)
-                point = int(json.loads(resp_read.text)['data']['point'])
-                message = f'阅读成功！获得{point}积分'
-                print(message)
-                success_messages.append(message)
-                total_points += point
-            except Exception as e:
-                error_messages.append(f"第 {i+1} 次阅读文章失败: {str(e)}")
-                continue
-
-        # 体检
+            print('开始阅读')
+            data_read = {"type":"explore_health_knowledge","params":{"articleCode":str(random.randint(1, 20))}}
+            resp_read = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
+                                             headers=headers, json=data_read)
+            point=int(json.loads(resp_read.text)['data']['point'])
+            message = f'阅读成功！获得{point}积分'
+            print(message)
+            success_messages.append(message)
+            total_points += point
+        #体检
         for i in range(3):
-            try:
-                h_test = {"gender":"1","age":"17","height":"188","weight":"50","waist":"55","hip":"55","food":{"breakfast":"1","dietHabits":["1"],"foodPreference":"1"},"life":{"livingCondition":["1"],"livingHabits":["1"]},"exercise":{"exerciseTimesWeekly":"1"},"mental":{"mentalState":["2"]},"body":{"bodyStatus":["2"],"oralStatus":"1","fruitReact":"1","skinCondition":["1"],"afterMealReact":"2","defecation":"2"},"sick":{"bloating":"2","burp":"2","fart":"3","gurgle":"3","stomachache":"2","behindSternum":"4","ThroatOrMouthAcid":"4","FoodReflux":"4","auseaOrVomiting":"4"},"other":{"familyProducts":["5"]}}
-                resp_htest = requests.post('https://mc.999.com.cn/zanmall_diy/ma/health/add',
+            h_test ={"gender":"1","age":"17","height":"188","weight":"50","waist":"55","hip":"55","food":{"breakfast":"1","dietHabits":["1"],"foodPreference":"1"},"life":{"livingCondition":["1"],"livingHabits":["1"]},"exercise":{"exerciseTimesWeekly":"1"},"mental":{"mentalState":["2"]},"body":{"bodyStatus":["2"],"oralStatus":"1","fruitReact":"1","skinCondition":["1"],"afterMealReact":"2","defecation":"2"},"sick":{"bloating":"2","burp":"2","fart":"3","gurgle":"3","stomachache":"2","behindSternum":"4","ThroatOrMouthAcid":"4","FoodReflux":"4","auseaOrVomiting":"4"},"other":{"familyProducts":["5"]}}
+            resp_htest = requests.post('https://mc.999.com.cn/zanmall_diy/ma/health/add',
                                       headers=headers, json=h_test)
-                referNo = json.loads(resp_htest.text)['data']['referNo']
-                print(referNo)
-                data_h_test = {"type":"complete_health_testing","params":{"testCode":f"{referNo}"}}
-                resp_h_test = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
+            referNo = json.loads(resp_htest.text)['data']['referNo']
+            print(referNo)
+            data_h_test = {"type":"complete_health_testing","params":{"testCode":f"{referNo}"}}
+            resp_h_test = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
                                       headers=headers, json=data_h_test)
-                point = int(json.loads(resp_h_test.text)['data']['point'])
-                message = f'体检成功！获得{point}积分'
-                print(message)
-                success_messages.append(message)
-                total_points += point
-                time.sleep(5)
-            except Exception as e:
-                error_messages.append(f"第 {i+1} 次体检任务失败: {str(e)}")
-                continue
+            point = int(json.loads(resp_h_test.text)['data']['point'])
+            message = f'体检成功！获得{point}积分'
+            print(message)
+            success_messages.append(message)
+            total_points += point
+            time.sleep(5)
 
-        # 获取总积分并推送消息
         try:
             resp = requests.get('https://mc.999.com.cn/zanmall_diy/ma/personal/point/pointInfo', headers=headers)
             totalpoints = json.loads(resp.text)['data']
             print(f'当前拥有总积分:{totalpoints}')
             
             # 生成推送消息
-            push_message = f"账号: {phone}\n今日获得总积分: {total_points}\n当前总积分: {totalpoints}\n\n成功信息:\n" + "\n".join(success_messages)
-            if error_messages:
-                push_message += f"\n\n失败信息:\n" + "\n".join(error_messages)
+            push_message = f"账号: {phone}\n今日获得总积分: {total_points}\n当前总积分: {totalpoints}\n\n详细信息:\n" + "\n".join(success_messages)
             
             # 使用sendNotify函数进行推送
-            send("999会员中心签到结果", push_message)
-        except Exception as e:
-            print(f"获取总积分失败: {str(e)}")
-            send("999会员中心", f"账号 {phone} 获取总积分失败，可能需要检查")
-
+            send("999会员中心签到成功", push_message)
+        except:
+            continue
     except Exception as e:
         print(str(e))
-        msg = f'账号 {phone} 可能失效！错误信息: {str(e)}'
+        msg =f'账号可能失效！'
+        # 使用sendNotify函数进行推送
         send("999会员中心", msg)
-
+        continue
     print('*'*30)
