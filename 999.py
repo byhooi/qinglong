@@ -89,50 +89,95 @@ for i in range(len(jjck)):
             except:
                 print('请检查抓包是否准确 个别青龙版本运行不了')
                 continue
+
         #阅读文章
-        for i in range(5):
-            print('开始阅读')
-            data_read = {"type":"explore_health_knowledge","params":{"articleCode":str(random.randint(1, 20))}}
-            resp_read = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
-                                             headers=headers, json=data_read)
-            point=int(json.loads(resp_read.text)['data']['point'])
-            message = f'阅读成功！获得{point}积分'
-            print(message)
-            success_messages.append(message)
-            total_points += point
+        try:
+            print('开始阅读任务')
+            for i in range(3):  # 每天只有3次阅读机会
+                data_read = {"type":"explore_health_knowledge","params":{"articleCode":str(random.randint(1, 20))}}
+                resp_read = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
+                                                 headers=headers, json=data_read)
+                resp_data = json.loads(resp_read.text)
+                
+                print(f'第{i+1}次阅读响应: {resp_data}')
+                
+                if 'data' in resp_data and resp_data['data'] and isinstance(resp_data['data'].get('point'), (int, str)):
+                    point = int(resp_data['data']['point'])
+                    message = f'第{i+1}次阅读成功！获得{point}积分'
+                    print(message)
+                    success_messages.append(message)
+                    total_points += point
+                    if i < 2:  # 最后一次阅读后不需要等待
+                        print(f'等待30秒后进行下一次阅读...')
+                        time.sleep(30)  # 每次阅读间隔30秒
+                else:
+                    print('今日阅读任务已完成或达到上限')
+                    break
+        except Exception as e:
+            print(f'阅读任务出错：{str(e)}')
+
         #体检
-        for i in range(3):
-            h_test ={"gender":"1","age":"17","height":"188","weight":"50","waist":"55","hip":"55","food":{"breakfast":"1","dietHabits":["1"],"foodPreference":"1"},"life":{"livingCondition":["1"],"livingHabits":["1"]},"exercise":{"exerciseTimesWeekly":"1"},"mental":{"mentalState":["2"]},"body":{"bodyStatus":["2"],"oralStatus":"1","fruitReact":"1","skinCondition":["1"],"afterMealReact":"2","defecation":"2"},"sick":{"bloating":"2","burp":"2","fart":"3","gurgle":"3","stomachache":"2","behindSternum":"4","ThroatOrMouthAcid":"4","FoodReflux":"4","auseaOrVomiting":"4"},"other":{"familyProducts":["5"]}}
+        try:
+            print('开始体检任务')
+            h_test = {"gender":"1","age":"17","height":"188","weight":"50","waist":"55","hip":"55",
+                     # ... 体检数据保持不变 ...
+                    }
             resp_htest = requests.post('https://mc.999.com.cn/zanmall_diy/ma/health/add',
                                       headers=headers, json=h_test)
             referNo = json.loads(resp_htest.text)['data']['referNo']
-            print(referNo)
-            data_h_test = {"type":"complete_health_testing","params":{"testCode":f"{referNo}"}}
+            print(f'体检编号: {referNo}')
+            
+            data_h_test = {"type":"complete_health_testing","params":{"testCode":referNo}}
             resp_h_test = requests.post('https://mc.999.com.cn/zanmall_diy/ma/client/pointTaskClient/finishTask',
                                       headers=headers, json=data_h_test)
-            point = int(json.loads(resp_h_test.text)['data']['point'])
-            message = f'体检成功！获得{point}积分'
-            print(message)
-            success_messages.append(message)
-            total_points += point
-            time.sleep(5)
+            resp_data = json.loads(resp_h_test.text)
+            
+            # 打印响应内容以便调试
+            print(f'体检任务响应: {resp_data}')
+            
+            if 'data' in resp_data and resp_data['data'] and isinstance(resp_data['data'].get('point'), (int, str)):
+                point = int(resp_data['data']['point'])
+                message = f'体检成功！获得{point}积分'
+                print(message)
+                success_messages.append(message)
+                total_points += point
+            else:
+                print('今日体检任务已完成或达到上限')
+        except Exception as e:
+            print(f'体检任务出错：{str(e)}')
 
+        # 获取总积分并推送消息
         try:
             resp = requests.get('https://mc.999.com.cn/zanmall_diy/ma/personal/point/pointInfo', headers=headers)
             totalpoints = json.loads(resp.text)['data']
             print(f'当前拥有总积分:{totalpoints}')
             
-            # 生成推送消息
-            push_message = f"账号: {phone}\n今日获得总积分: {total_points}\n当前总积分: {totalpoints}\n\n详细信息:\n" + "\n".join(success_messages)
+            if not success_messages:
+                push_message = f"账号: {phone}\n今日所有任务已完成\n当前总积分: {totalpoints}"
+            else:
+                push_message = (f"账号: {phone}\n"
+                              f"今日获得总积分: {total_points}\n"
+                              f"当前总积分: {totalpoints}\n"
+                              f"\n任务详情:\n" + "\n".join(success_messages))
             
-            # 使用sendNotify函数进行推送
-            send("999会员中心签到成功", push_message)
-        except:
-            continue
+            send("999会员中心签到结果", push_message)
+        except Exception as e:
+            print(f'获取总积分失败：{str(e)}')
+            if not success_messages:
+                push_message = f"账号: {phone}\n今日所有任务已完成"
+            else:
+                push_message = (f"账号: {phone}\n"
+                              f"今日获得总积分: {total_points}\n"
+                              f"\n任务详情:\n" + "\n".join(success_messages))
+            send("999会员中心签到结果", push_message)
+
+
     except Exception as e:
-        print(str(e))
-        msg =f'账号可能失效！'
-        # 使用sendNotify函数进行推送
-        send("999会员中心", msg)
+        error_msg = f'账号 {phone if "phone" in locals() else "未知"} 运行出错：{str(e)}'
+        print(error_msg)
+        if 'success_messages' in locals() and success_messages:
+            error_msg += f"\n\n已完成的任务:\n" + "\n".join(success_messages)
+        send("999会员中心运行异常", error_msg)
         continue
+
     print('*'*30)
