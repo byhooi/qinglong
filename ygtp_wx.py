@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 cron: 15 7 * * *
-new Env('央广网投票');
+new Env('央广网公众号投票');
 """
 
 import os
@@ -23,14 +23,14 @@ except:
 # 配置类
 class Config:
     # 青龙面板拉取后会自动转换为环境变量
-    tokens = os.getenv("CNR_ACCESS_TOKENS", "").split("&") # 改用 accessToken
-    object_id = os.getenv("CNR_OBJECT_ID", "")  # 默认投票对象ID
-    vote_count = int(os.getenv("CNR_VOTE_COUNT", "10"))  # 每次投票次数
+    temptokens = os.getenv("CNR_TEMPTOKENS", "").split("&") # 支持多账号,使用&分隔
+    object_id = os.getenv("CNR_OBJECT_ID", "")  # 投票对象ID
+    vote_count = int(os.getenv("CNR_VOTE_COUNT", "5"))  # 每次投票次数
     
     @classmethod
     def check(cls):
-        if not cls.tokens[0]:
-            print("未配置 accessToken, 请查看配置说明")
+        if not cls.temptokens[0]:
+            print("未配置 tempToken, 请查看配置说明")
             sys.exit(1)
         return True
 
@@ -41,17 +41,15 @@ class CNRVote:
         self.success_count = 0
         self.fail_count = 0
         
-    def vote(self, access_token):
+    def vote(self, temptoken):
         """执行投票"""
         headers = {
             "Host": "voteapi1.cnr.cn",
-            "Accept": "application/json, text/plain, */*",
             "appName": "ygw",
-            "accessToken": access_token,
-            "Origin": "https://apicnrapp.cnr.cn",
-            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
-            "Referer": "https://apicnrapp.cnr.cn/",
-            "Content-Type": "application/json;charset=utf-8"
+            "content-type": "application/json",
+            "tempToken": temptoken,
+            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.53(0x1800352b) NetType/WIFI Language/zh_CN",
+            "Referer": "https://servicewechat.com/wx219ee13807f92193/66/page-frame.html"
         }
         
         data = {
@@ -62,7 +60,7 @@ class CNRVote:
         
         try:
             response = self.session.post(
-                f"{self.base_url}/sddh2/h5/vote",  # 修改为正确的投票接口
+                f"{self.base_url}/sddh2/wechat/vote",
                 headers=headers,
                 json=data,
                 timeout=10
@@ -70,7 +68,7 @@ class CNRVote:
             result = response.json()
             
             if response.status_code == 200:
-                if result.get("status") == 200:  # 修改状态码判断
+                if result.get("code") == 200:
                     self.success_count += 1
                     return True, f"投票成功: {result.get('message', 'OK')}"
                 else:
@@ -89,7 +87,7 @@ class CNRVote:
         msg_list = []
         msg_list.append(f"========= 央广网投票 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =========")
         
-        for index, token in enumerate(Config.tokens):
+        for index, token in enumerate(Config.temptokens):
             if not token:
                 continue
                 
