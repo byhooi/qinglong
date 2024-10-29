@@ -25,7 +25,7 @@ class Config:
     # 青龙面板拉取后会自动转换为环境变量
     temptokens = os.getenv("CNR_TEMPTOKENS", "").split("&") # 支持多账号,使用&分隔
     object_id = os.getenv("CNR_OBJECT_ID", "141197")  # 投票对象ID
-    vote_count = int(os.getenv("CNR_VOTE_COUNT", "1"))  # 每次投票次数
+    vote_count = int(os.getenv("CNR_VOTE_COUNT", "5"))  # 每次投票次数
     
     @classmethod
     def check(cls):
