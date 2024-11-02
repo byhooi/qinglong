@@ -26,6 +26,7 @@ class Config:
     temptokens = os.getenv("CNR_TEMPTOKENS", "").split("&") # 支持多账号,使用&分隔
     object_id = os.getenv("CNR_OBJECT_ID", "")  # 投票对象ID
     vote_count = int(os.getenv("CNR_VOTE_COUNT", "5"))  # 每次投票次数
+    last_vote_time = {}  # 记录每个账号最后投票时间
     
     @classmethod
     def check(cls):
@@ -33,6 +34,14 @@ class Config:
             print("未配置 tempToken, 请查看配置说明")
             sys.exit(1)
         return True
+        
+    @classmethod
+    def can_vote_today(cls, token):
+        """检查今天是否已经投票"""
+        last_time = cls.last_vote_time.get(token, 0)
+        today = datetime.now().strftime('%Y-%m-%d')
+        last_day = datetime.fromtimestamp(last_time).strftime('%Y-%m-%d')
+        return today != last_day
 
 class CNRVote:
     def __init__(self):
@@ -68,7 +77,10 @@ class CNRVote:
             result = response.json()
             
             if response.status_code == 200:
-                if result.get("code") == 200:
+                if result.get("code") == 400 and "今日投票次数已用完" in result.get("message", ""):
+                    self.fail_count += 1
+                    return False, "今日该账号投票次数已达上限"
+                elif result.get("code") == 200:
                     self.success_count += 1
                     return True, f"投票成功: {result.get('message', 'OK')}"
                 else:
