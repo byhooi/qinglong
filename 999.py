@@ -107,8 +107,9 @@ for i in range(len(jjck)):
                     print(message)
                     success_messages.append(message)
                     total_points += point
-                    print(f'等待30秒后进行下一次阅读...')
-                    time.sleep(30)  # 每次阅读都等待30秒
+                    if i < 2:  # 最后一次阅读后不需要等待
+                        print(f'等待30秒后进行下一次阅读...')
+                        time.sleep(30)  # 每次阅读间隔30秒
                 else:
                     print('今日阅读任务已完成或达到上限')
                     break
@@ -157,6 +158,7 @@ for i in range(len(jjck)):
                 push_message = (f"账号: {phone}\n"
                               f"今日获得总积分: {total_points}\n"
                               f"当前总积分: {totalpoints}\n"
+                              f"\n任务详情:\n" + "\n".join(success_messages))
             
             send("999会员中心签到结果", push_message)
         except Exception as e:
@@ -166,6 +168,7 @@ for i in range(len(jjck)):
             else:
                 push_message = (f"账号: {phone}\n"
                               f"今日获得总积分: {total_points}\n"
+                              f"\n任务详情:\n" + "\n".join(success_messages))
             send("999会员中心签到结果", push_message)
 
 
