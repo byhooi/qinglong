@@ -13,7 +13,9 @@ import importlib
 from sendNotify import send
 
 
-# 青龙变量 cjwlhck  
+# 青龙变量 cjwlhck
+# 抓包 https://program.springcocoon.com/szbay/api/services/app/SignInRecord/SignInAsync 域名的请求同里面的cookie填入青龙变量 config.sh 里export ='' 多账号&分割  或新建变量里面 多号新建多个 
+
 cookielist = os.getenv("cjwlhck").split('&')
 
 for i in range(len(cookielist)):
