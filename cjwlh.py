@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -- coding: utf-8 -- 
 """
-cron: "35 8 * * *"
+cron: "35 9 * * *"
 new Env('春茧未来荟');
 """
 import requests
