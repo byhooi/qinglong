@@ -80,7 +80,7 @@ for i in range(len(jjck)):
                 result = json.loads(response.text)['data']
                 point = result['point']
                 if result['success'] == True:
-                    message = f'打卡内容{Meaning}---���卡完成 获得积分{point}'
+                    message = f'打卡内容{Meaning}---打卡完成 获得积分{point}'
                     print(message)
                     success_messages.append(message)
                     total_points += point
@@ -160,7 +160,7 @@ for i in range(len(jjck)):
         except Exception as e:
             print(f'获取总积分失败：{str(e)}')
             if not success_messages:
-                push_message = f"账号: {phone}\n今���所有任务已完成"
+                push_message = f"账号: {phone}\n今日所有任务已完成"
             else:
                 push_message = (f"账号: {phone}\n"
                               f"今日获得总积分: {total_points}\n"
