@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from sys import exit
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from notify import send
 
 # 禁用安全请求警告
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -1625,13 +1626,8 @@ class RUN:
         self.sendMsg()
         return True
 
-    # def sendMsg(self, help=False):
-    #     if self.send_UID:
-    #         push_res = CHERWIN_TOOLS.wxpusher(self.send_UID, one_msg, APP_NAME, help)
-    #         print(push_res)
     def sendMsg(self, help=False):
-          #send("顺丰-通知", one_msg)
-          pass
+        send("顺丰-通知", one_msg) 
 
 def get_quarter_end_date():
     current_date = datetime.now()
@@ -1694,7 +1690,7 @@ if __name__ == '__main__':
     CK_NAME = 'url'
     print(f'''
     2024/9/3修复版，中秋任务
-      点击“积分”，以下几种url之一：
+      点击"积分"，以下几种url之一：
         https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/shareGiftReceiveRedirect
         https://mcs-mimp-web.sf-express.com/mcs-mimp/share/app/shareRedirect
     多账号换行
