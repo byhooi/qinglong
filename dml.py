@@ -7,9 +7,7 @@ import json
 import notify
 
 message = ''
-from dotenv import load_dotenv
-load_dotenv()
-accounts = os.getenv('dmlck')
+accounts = os.environ.get('dmlck')
 
 if accounts is None:
     print('没有CK')
