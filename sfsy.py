@@ -1313,7 +1313,7 @@ class RUN:
             return False
 
     def DRAGONBOAT_2024_Game_init(self):
-        Log('====== 开始推财神游戏 ======')
+        print('====== 开始推财神游戏 ======')  # 这行改为 print 就不会加入推送消息
         try:
             payload = {}
             url = 'https://mcs-mimp-web.sf-express.com/mcs-mimp/commonPost/~memberNonactivity~yearEnd2024GameService~init'
