@@ -1,4 +1,4 @@
-/*
+"""
 H5登录抓包 ：https://cloud.huaruntong.cn/web/online/?mFrom=fastLogin#/signIn?utm_source=hrt&utm_medium=flzx&utm_content=qd0228&utm_campaign=qd0228&inviteCode=2d9e1a77d725404b864c7e79fdf7fc33
 或者华润通APP 域名https://mid.huaruntong.cn/api/user/memberinfo/appBootstarp 返回文本里的token
 以上都是抓token
@@ -9,7 +9,7 @@ export hrthd='token'
 配合之前的一点万象积分签到
 
 依赖 crypto axios
-*/
+"""
 const $ = new Env('华润通');
 const axios = require('axios');
 var crypto = require('crypto');
