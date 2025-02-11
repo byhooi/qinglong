@@ -31,7 +31,7 @@ else:
         account_no = values[1] if len(values) > 1 else ""
         print(f"\n=======开始执行账号{i} {account_no}=======")
         url = f"https://game.dominos.com.cn/{pzid}/game/gameDone"
-        payload = f"openid={Cookie}&score=t5%2Bhzvt2h6jpwH7D%2BJkNWvT%2Fb6J2mWDStIgcC4ZSrhkqPEqXtcDrCC9LVFvQLRtGkeVQ7z0W6RYqcXxmeXi9596r4HZ1Pt0E5PpRLYWZZL%2BXQXEpyc0WX8c4ewMqQymjBgGMcSRFp3aaLTDNaRLvLcnnh2t5PpL70pW%2B7LcM8tnhtP1J2rLaTe0Dno7%2B9Qf32LuHUS%2BUXCgQ6YbCJwj%2BWrmhP1zbFvGthkH6HB9lkI9mS%2F%2BY9582WQeFREMF9OflJpRVjgPd1%2FPWFRWKWrl%2F7VGztrHpQLZvLQ9HRINK99cN4FBBvPVkkHxyACadINkuFwxgC9ODPYInHXXpn5iElg%3D%3D"
+        payload = f"openid={Cookie}&score=d8XtWSEx0zRy%2BxdeJriXZeoTek6ZVZdadlxdTFiN9yrxt%2BSIax0%2BRccbkObBZsisYFTquPg%2FG2cnGPBlGV2f32C6D5q3FFhgvcfJP9cKg%2BXs6l7J%2BEcahicPml%2BZWp3P4o1pOQvNdDUTQgtO6NGY0iijZ%2FLAmITy5EJU8dAc1EnbvhOYG36Qg1Ji4GDRoxAfRgmELvpLM6JSFlCEKG2C2s%2BJCevOJo7kwsLJCvwbVgeewhKSAyCZYnJQ4anmPgvrv6iUIiFQP%2Bj6%2B5p1VETe5xfawQ4FQ4w0mttXP0%2BhX39n1dzDrfcSkYkUaWPkIFlHAX7QPT3IgG6MhIKCvB%2BUcw%3D%3D&tempId=16408240716151126162"
         headers = {
             'User-Agent': "Mozilla/5.0 (iPod; U; CPU iPhone OS 4_2 like Mac OS X; sd-PK) AppleWebKit/535.42.7 (KHTML, like Gecko) Version/4.0.5 Mobile/8B111 Safari/6535.42.7",
             'Accept-Encoding': "gzip,compress,br,deflate",
