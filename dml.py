@@ -47,16 +47,15 @@ else:
             if res['errorMessage'] == "今日分享已用完，请明日再来":
                 print(f'账号{i}分享已达上限，开始抽奖')
                 break
-        message +=f"账号{i}"
-        while True:
+        for a in range(3):
             response = requests.post(url, data=payload, headers=headers)
             response = response.json()
             if response["statusCode"] == 0:
                 prize = response['content']['name']
-                print(f"\n{prize}")
-                message += f"\n {prize}"
-                time.sleep(1)
-
+                print(f"\n账号{i}\n{prize}")
+                message += f"\n{prize}"
+                if '一等奖' in prize:
+                    Push(contents="账号{i}\n{prize}")
             if response["statusCode"] != 0:
                 print(response)
                 err = response['errorMessage']
