@@ -53,16 +53,15 @@ else:
             if response["statusCode"] == 0:
                 prize = response['content']['name']
                 print(f"\n账号{i}\n{prize}")
-                message += f"\n{prize}"
                 if '一等奖' in prize:
-                    Push(contents="账号{i}\n{prize}")
+                    message += f"\n账号{i}中得：{prize}"
+                    try:
+                        notify.send('达美乐一等奖通知', f"恭喜账号{i}中得：{prize}")
+                    except Exception as e:
+                        print(f'推送失败：{e}')
             if response["statusCode"] != 0:
                 print(response)
                 err = response['errorMessage']
-                message += f'\n账号{i}\n {err}'
+                print(f'\n账号{i}\n {err}')
+                message += f"\n账号{i}出错：{err}"
                 break
-try:
-    notify.send('达美乐',message)
-except Exception as e:
-    print(e)
-    print('推送失败')
