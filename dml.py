@@ -5,6 +5,10 @@
 变量名2：pzid 填活动id这次是volcano
 
 '''
+"""
+cron: "30 10 * * *"
+new Env('达美乐披萨');
+"""
 import os
 import time
 import requests
