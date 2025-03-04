@@ -1711,3 +1711,18 @@ if __name__ == '__main__':
         for index, infos in enumerate(tokens):
             run_result = RUN(infos, index).main()
             if not run_result: continue
+            # ... existing code ...
+
+def main():
+    # ... existing main function code ...
+    
+    # 在main函数末尾添加推送
+    if send_msg:
+        try:
+            from notify import send
+            send('顺丰速运', send_msg)
+        except Exception as e:
+            print(f'推送失败：{e}')
+
+if __name__ == '__main__':
+    main()
