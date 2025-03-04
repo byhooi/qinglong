@@ -40,7 +40,6 @@ else:
             'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.56(0x18003835) NetType/WIFI Language/zh_CN",
             'Accept-Encoding': "gzip,compress,br,deflate",
             'Content-Type': "application/x-www-form-urlencoded",
-            'Authorization': "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiI5MjI2MTI1MDMwNDExMzgwOTQ3IiwiZXhwIjoxNzQxMTQ3MDY5fQ.0eHxowo4d8DRBlvL05hUCrT-7fofkF365UW2ZBErbXhPg5qJ0dkOVc2epI2idwXF1v_io7XlNmsAebP_Hn3fRA",
             'Referer': "https://servicewechat.com/wx887bf6ad752ca2f3/72/page-frame.html"
         }
 
