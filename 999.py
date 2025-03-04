@@ -98,7 +98,6 @@ for i in range(len(jjck)):
                                              headers=headers, json=data_read)
             point=str(json.loads(resp_read.text)['data']['point'])
             print(f'阅读成功！获得{point}积分')
-
         #体检
         for i in range(3):
             h_test ={"gender":"1","age":"17","height":"188","weight":"50","waist":"55","hip":"55","food":{"breakfast":"1","dietHabits":["1"],"foodPreference":"1"},"life":{"livingCondition":["1"],"livingHabits":["1"]},"exercise":{"exerciseTimesWeekly":"1"},"mental":{"mentalState":["2"]},"body":{"bodyStatus":["2"],"oralStatus":"1","fruitReact":"1","skinCondition":["1"],"afterMealReact":"2","defecation":"2"},"sick":{"bloating":"2","burp":"2","fart":"3","gurgle":"3","stomachache":"2","behindSternum":"4","ThroatOrMouthAcid":"4","FoodReflux":"4","auseaOrVomiting":"4"},"other":{"familyProducts":["5"]}}
