@@ -247,15 +247,7 @@ rk312EDfBHtRgDvB0QIDAQAB
         for index, token in enumerate(self.hrthdArr, 1):
             print(f"\n==== 开始【第 {index} 个账号】====\n")
             
-            # 获取问题
-            qid, qno, keywords = self.question_get()
-            if qid:
-                # 提交问题计数
-                self.question_count(qid)
-                # 保存签到
-                self.save_question_signin(qno, token)
-                # 获取翻牌奖励
-                self.get_flop_reward(token)
+
 
 def main():
     hrt = Huaruntong()
