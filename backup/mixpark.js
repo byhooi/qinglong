@@ -14,7 +14,7 @@ async function signIn() {
 
     const requestBody = {
         token: token,
-        version: "4.11.23",
+        version: "4.11.24",
         bid: "ejga",
         mkeyUrl: url,
         mkey: Mkey
