@@ -20,7 +20,7 @@ message = ''
 accounts = os.getenv('dmlck')
 pzid = os.getenv('pzid')
 if accounts is None:
-    print('你没有填入ck，咋运行？')
+    print('没找到 CK')
 else:
     accounts_list = os.environ.get('dmlck').split('@')
 
