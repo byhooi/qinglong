@@ -1640,11 +1640,12 @@ class RUN:
 
 
         # #######################################
-        # # # 获取当前季度结束日期
-        # # activity_end_date = get_quarter_end_date()
-        # # if is_activity_end_date(activity_end_date):
-        # #     Log("今天采蜜活动截止兑换，请及时进行兑换")
-        # #     send('顺丰速运挂机通知', "今天采蜜活动截止兑换，请及时进行兑换")
+        # 获取当前季度结束日期
+        # 获取当前季度结束日期
+        activity_end_date = get_quarter_end_date()
+        if is_activity_end_date(activity_end_date):
+            Log("今天采蜜活动截止兑换，请及时进行兑换")
+            send('顺丰速运挂机通知', "今天采蜜活动截止兑换，请及时进行兑换")
         target_time = datetime(2025, 4, 8, 19, 0)
         if datetime.now() < target_time:
             self.EAR_END_2023_TaskList()
