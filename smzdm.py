@@ -74,15 +74,18 @@ class SMZDM:
         resp = requests.post(url=url2, headers=headers, data=data)
         result = resp.json()
         msgs = []
-        if normal_reward := result["data"]["normal_reward"]:
+        if normal_reward := result.get("data", {}).get("normal_reward"):
+            # 更安全的数据获取方式
+            reward_content = normal_reward.get("reward_add", {}).get("content", "未知奖励")
+            sub_title = normal_reward.get("sub_title", "未知天数")
             msgs = [
                 {
                     "name": "签到奖励",
-                    "value": normal_reward["reward_add"]["content"],
+                    "value": reward_content,
                 },
                 {
                     "name": "连续签到",
-                    "value": normal_reward["sub_title"],
+                    "value": sub_title,
                 },
             ]
         return msgs
