@@ -12,7 +12,7 @@ from sendNotify import send
 urllib3.disable_warnings()
 
 
-class SMZDM:  # 移除 CheckIn 继承
+class SMZDM:  
     name = "什么值得买"
 
     def __init__(self):
