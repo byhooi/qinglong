@@ -73,6 +73,7 @@ class SMZDM:
         url2 = "https://user-api.smzdm.com/checkin/all_reward"
         resp = requests.post(url=url2, headers=headers, data=data)
         result = resp.json()
+        print("签到奖励返回数据：", result)  # 添加此行来查看数据结构
         msgs = []
         if normal_reward := result.get("data", {}).get("normal_reward"):
             # 更安全的数据获取方式
