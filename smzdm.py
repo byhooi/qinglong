@@ -18,11 +18,11 @@ class SMZDM:  # 移除 CheckIn 继承
     def __init__(self):
         self.check_item = {}
         # 从环境变量获取 cookie
-        cookie = os.getenv('SMZDM.cookie')
+        cookie = os.getenv('smzdm_cookie')
         if cookie:
             self.check_item["cookie"] = cookie
         else:
-            raise Exception("需要配置环境变量 SMZDM.cookie")
+            raise Exception("需要配置环境变量 smzdm_cookie")
 
     def robot_token(self, headers):
         ts = int(round(time.time() * 1000))
