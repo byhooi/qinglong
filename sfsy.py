@@ -46,8 +46,20 @@ one_msg = ''
 def Log(cont=''):
     """记录日志"""
     global send_msg, one_msg
-    print(cont)
-    if cont:
+    print(cont)  # 控制台始终打印所有日志
+    
+    # 定义需要推送的关键信息
+    push_keywords = [
+        '账号', '登陆成功',
+        '开始执行签到', '今日已签到',
+        '当前积分：',
+        '开始执行采蜜换大礼任务', '执行后丰蜜：',
+        '采蜜活动截止兑换还有',
+        '抽奖获得:'  # 添加抽奖奖励关键词
+    ]
+    
+    # 只有包含关键词的信息才记录到推送消息中
+    if cont and any(keyword in cont for keyword in push_keywords):
         one_msg += f'{cont}\n'
         send_msg += f'{cont}\n'
 
