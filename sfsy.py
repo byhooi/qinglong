@@ -150,7 +150,7 @@ class RUN:
                 response.raise_for_status()
                 return response.json()
 
-            except (requests.exceptions.RequestException, json.JSONDisposeError) as e:
+            except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
                 Log(f'❌ 请求失败 ({retry_count + 1}/{max_retries}): {str(e)}')
                 if retry_count < max_retries - 1:
                     time.sleep(2)
