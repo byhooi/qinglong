@@ -2,20 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-顺丰速运自动化脚本
-来源:
-- https://github.com/faintout/myself-script/blob/main/sfsy.py
-- https://github.com/Xx1aoy1/scripts/blob/main/sf2.py
-
-功能: 遍历生活特权所有分组的券进行领券，完成任务领取丰蜜积分
-变量名: sfsyUrl
-格式: 多账号用换行分割
-获取方式:
-1. 顺丰APP绑定微信后，添加机器人发送“顺丰”
-2. 打开小程序或APP-我的-积分，抓包以下URL之一:
-   - https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/shareGiftReceiveRedirect
-   - https://mcs-mimp-web.sf-express.com/mcs-mimp/share/app/shareRedirect
-编码: 抓取URL后，使用 https://www.toolhelper.cn/EncodeDecode/Url 进行编码
+打开小程序或APP-我的-积分, 捉以下几种url之一,把整个url放到变量 sfsyUrl 里,多账号换行分割
+https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/shareGiftReceiveRedirect
+https://mcs-mimp-web.sf-express.com/mcs-mimp/share/app/shareRedirect
 
 Cron: 11 7 * * *
 """
