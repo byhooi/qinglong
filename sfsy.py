@@ -486,7 +486,14 @@ class RUN:
         response = self.do_request(url, data=json_data)
         if response.get('success'):
             gift_name = response.get('obj', {}).get('giftBagName', '未知奖励')
-            Log(f'🎁 抽奖获得: {gift_name}')
+            # 将奖励信息合并
+            if not hasattr(self, 'prize_gifts'):
+                self.prize_gifts = []
+            self.prize_gifts.append(gift_name)
+            # 只在最后一次抽奖时输出所有奖励
+            if self.lotteryNum <= 1:
+                all_gifts = ', '.join(self.prize_gifts)
+                Log(f'🎁 抽奖获得: {all_gifts}')
         else:
             Log(f'❌ 抽奖失败: {response.get("errorMessage", "未知错误")}')
 
