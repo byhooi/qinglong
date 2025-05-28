@@ -7,6 +7,7 @@ Author: Hennessey
 cron: "40 0 * * *"
 new Env('GLaDOS签到');
 Update: 2023/7/27
+签到-开发者工具-网络-checkin-cookie
 """
 
 

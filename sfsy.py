@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-打开小程序或APP-我的-积分, 捉以下几种url之一,把整个url放到变量 sfsyUrl 里,多账号换行分割
-https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/shareGiftReceiveRedirect
-https://mcs-mimp-web.sf-express.com/mcs-mimp/share/app/shareRedirect
-
+new Env('顺丰速运签到');
 Cron: 11 7 * * *
 """
+
+# 打开小程序或APP-我的-积分, 捉以下几种url之一,把整个url放到变量 sfsyUrl 里,多账号换行分割
+# https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/shareGiftReceiveRedirect
+# https://mcs-mimp-web.sf-express.com/mcs-mimp/share/app/shareRedirect
+# https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/activityRedirect
 
 import hashlib
 import json
