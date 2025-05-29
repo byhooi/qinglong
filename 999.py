@@ -8,6 +8,8 @@
 cron: "30 8 * * *"
 new Env('999会员中心');
 """
+import os
+os.environ["OPENSSL_LEGACY_PROVIDER"] = "1"
 import requests
 import time
 import json
