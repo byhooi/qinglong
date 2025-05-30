@@ -15,7 +15,7 @@ import json
 import os
 from sendNotify import send
 
-# 登录后搜索 https://app.mixcapp.com/mixc/gateway 域名随意一个 请求体里面的deviceParams，token 多账号填多个单引号里面 用英文逗号隔开
+# 登录后搜索 https://app.mixcapp.com/mixc/gateway 域名随意一个 请求体里面的deviceParams，token 多账号用 & 分隔
 # 青龙变量 ydwx_deviceParams ydwx_token
 ydwx_deviceParams = os.getenv("ydwx_deviceParams").split('&')
 ydwx_token = os.getenv("ydwx_token").split('&')
