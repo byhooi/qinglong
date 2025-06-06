@@ -785,16 +785,8 @@ class RUN:
         return True
 
     def sendMsg(self, help=False):
-        """发送消息通知"""
-        global send_msg, one_msg
-        title = "🚚 顺丰速运"
-        
-        try:
-            from notify import send
-            send(title, send_msg)
-            Log("✅ 推送成功")
-        except Exception as e:
-            Log(f"❌ 推送失败: {str(e)}")
+        """收集消息,不单独推送"""
+        pass  # 改为空方法,只收集消息,不推送
 
 def get_quarter_end_date():
     """计算当前季度结束日期"""
@@ -815,5 +807,13 @@ if __name__ == '__main__':
         for index, infos in enumerate(tokens):
             Log(f"==================================\n🚚 处理账号{index + 1}")
             RUN(infos, index).main()
+            
+        # 所有账号处理完成后统一推送
+        try:
+            title = "🚚 顺丰速运"
+            send(title, send_msg)
+            Log("✅ 推送成功")
+        except Exception as e:
+            Log(f"❌ 推送失败: {str(e)}")
     else:
         Log("❌ 未获取到sfsyUrl环境变量")
