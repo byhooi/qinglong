@@ -631,15 +631,25 @@ class RUN:
         if response.get('success'):
             task_list = response.get('obj', [])
             for task in task_list:
-                if task['status'] == 1:
+                if not isinstance(task, dict):
+                    continue
+                status = task.get('status')
+                task_type = task.get('taskType')
+                task_code = task.get('taskCode')
+                
+                if not all([status, task_type, task_code]):
+                    continue
+                    
+                if status == 1:
                     if self.member_day_black:
                         return
                     self.member_day_fetch_mix_task_reward(task)
-                elif task['status'] == 2 and task['taskType'] not in [
+                elif status == 2 and task_type not in [
                     'SEND_SUCCESS', 'INVITEFRIENDS_PARTAKE_ACTIVITY', 'OPEN_SVIP',
                     'OPEN_NEW_EXPRESS_CARD', 'OPEN_FAMILY_CARD', 'CHARGE_NEW_EXPRESS_CARD', 'INTEGRAL_EXCHANGE'
                 ]:
-                    for _ in range(task['restFinishTime']):
+                    rest_finish_time = task.get('restFinishTime', 1)
+                    for _ in range(rest_finish_time):
                         if self.member_day_black:
                             return
                         self.member_day_finish_task(task)
@@ -652,15 +662,25 @@ class RUN:
 
     def member_day_finish_task(self, task):
         """完成会员日任务"""
-        payload = {'taskCode': task['taskCode']}
+        if not isinstance(task, dict):
+            return
+            
+        task_code = task.get('taskCode')
+        task_name = task.get('taskName', '未知任务')
+        
+        if not task_code:
+            Log(f'📝 任务[{task_name}]缺少taskCode，跳过')
+            return
+            
+        payload = {'taskCode': task_code}
         url = 'https://mcs-mimp-web.sf-express.com/mcs-mimp/commonPost/~memberEs~taskRecord~finishTask'
         response = self.do_request(url, data=payload)
         if response.get('success'):
-            Log(f'📝 完成会员日任务[{task["taskName"]}]: 成功')
+            Log(f'📝 完成会员日任务[{task_name}]: 成功')
             self.member_day_fetch_mix_task_reward(task)
         else:
             error_message = response.get('errorMessage', '无返回')
-            Log(f'📝 完成会员日任务[{task["taskName"]}]: {error_message}')
+            Log(f'📝 完成会员日任务[{task_name}]: {error_message}')
             if '没有资格参与活动' in error_message:
                 self.member_day_black = True
                 Log('📝 会员日任务风控')
