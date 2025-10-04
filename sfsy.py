@@ -813,7 +813,13 @@ def get_quarter_end_date():
     current_date = datetime.now()
     current_month = current_date.month
     current_year = current_date.year
-    next_quarter_first_day = datetime(current_year, ((current_month - 1) // 3 + 1) * 3 + 1, 1)
+    # 计算当前季度结束月份 (3, 6, 9, 12)
+    quarter_end_month = ((current_month - 1) // 3 + 1) * 3
+    # 计算下一季度第一天
+    if quarter_end_month == 12:
+        next_quarter_first_day = datetime(current_year + 1, 1, 1)
+    else:
+        next_quarter_first_day = datetime(current_year, quarter_end_month + 1, 1)
     return next_quarter_first_day - timedelta(days=1)
 
 if __name__ == '__main__':
