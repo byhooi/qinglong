@@ -168,23 +168,7 @@ class RUN:
         else:
             Log(f'❌ 签到失败！原因：{response.get("errorMessage", "未知错误")}')
 
-    def superWelfare_receiveRedPacket(self):
-        """领取超值福利签到奖励"""
-        Log('🎁 超值福利签到')
-        json_data = {"channel": "czflqdlhbxcx"}
-        url = 'https://mcs-mimp-web.sf-express.com/mcs-mimp/commonPost/~memberActLengthy~redPacketActivityService~superWelfare~receiveRedPacket'
-        response = self.do_request(url, data=json_data)
-        if response.get('success'):
-            gift_list = response.get('obj', {}).get('giftList', [])
-            if response.get('obj', {}).get('extraGiftList', []):
-                gift_list.extend(response['obj']['extraGiftList'])
-            gift_names = ', '.join([gift['giftName'] for gift in gift_list]) or '无奖励'
-            receive_status = response.get('obj', {}).get('receiveStatus')
-            status_message = '领取成功' if receive_status == 1 else '已领取过'
-            Log(f'🎉 超值福利签到[{status_message}]: {gift_names}')
-        else:
-            Log(f'❌ 超值福利签到失败: {response.get("errorMessage", "未知错误")}')
-
+    
     def get_SignTaskList(self, end=False):
         """获取签到任务列表"""
         Log('🎯 开始获取签到任务列表' if not end else '💰 查询最终积分')
@@ -438,7 +422,6 @@ class RUN:
 
         # 执行签到任务
         self.sign()
-        self.superWelfare_receiveRedPacket()
         self.get_SignTaskList()
         self.get_SignTaskList(True)
 
