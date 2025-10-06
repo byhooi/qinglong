@@ -428,8 +428,6 @@ class RUN:
         # 会员日任务
         if 26 <= datetime.now().day <= 28:
             self.member_day_index()
-        else:
-            Log('📝 未到指定时间不执行会员日任务')
 
         self.sendMsg()
         return True
