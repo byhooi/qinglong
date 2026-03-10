@@ -27,6 +27,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, unquote, urlparse
 
+import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -94,24 +98,47 @@ class SFAccountConfig:
 
 
 def load_accounts():
-    """从环境变量加载账号配置"""
-    env_value = os.getenv('sf_jifen', '')
+    """
+    从环境变量加载账号配置
+    支持两种格式:
+    1. 旧格式: 换行分隔的URL (兼容旧版 sfsyUrl)
+    2. 新格式: JSON {"accounts":[...]}
+    """
+    env_value = os.getenv('sfsyUrl', '')
     if not env_value:
         return []
 
-    try:
-        config = json.loads(env_value)
-        raw_accounts = config.get('accounts', [])
-        accounts = []
-        for raw in raw_accounts:
-            try:
-                accounts.append(SFAccountConfig.from_dict(raw))
-            except ValueError as e:
-                logger.error(f"账号配置异常: {e}")
-        return accounts
-    except json.JSONDecodeError:
-        print("❌ 环境变量 sf_jifen 格式错误，请检查JSON格式")
-        return []
+    env_value = env_value.strip()
+
+    # 尝试JSON格式
+    if env_value.startswith('{'):
+        try:
+            config = json.loads(env_value)
+            raw_accounts = config.get('accounts', [])
+            accounts = []
+            for raw in raw_accounts:
+                try:
+                    accounts.append(SFAccountConfig.from_dict(raw))
+                except ValueError as e:
+                    logger.error(f"账号配置异常: {e}")
+            return accounts
+        except json.JSONDecodeError:
+            print("❌ 环境变量 sfsyUrl JSON格式错误")
+            return []
+
+    # 旧格式: 换行分隔的URL，每行一个账号
+    urls = [u.strip() for u in env_value.split('\n') if u.strip()]
+    accounts = []
+    for i, url in enumerate(urls):
+        accounts.append(SFAccountConfig(
+            account_name=f"账号{i + 1}",
+            sign=url,
+            user_agent="",
+            channel="appqiandao",
+            device_id=""
+        ))
+    logger.info(f"从旧格式 sfsyUrl 加载了 {len(accounts)} 个账号")
+    return accounts
 
 
 class SFTasksManager:
@@ -177,23 +204,87 @@ class SFTasksManager:
 
         return ""
 
-    def fetch_login_info(self, account: SFAccountConfig) -> Optional[ShareLoginInfo]:
-        """获取账号登录信息"""
-        logger.info(f"[{account.account_name}] 开始请求分享登录接口")
-        login_info = SFExpressAPI.share_login(
-            sign=account.sign,
-            user_agent=account.user_agent or None
-        )
+    @staticmethod
+    def _url_login(sign_url: str, user_agent: str = None) -> Optional[ShareLoginInfo]:
+        """
+        使用完整URL直接登录（兼容旧版 sfsyUrl 格式）
+        直接访问URL获取cookies，和旧版 sfsy.py 的登录方式一致
+        """
+        from urllib.parse import unquote as url_unquote
 
-        if not login_info.success:
-            logger.warning(f"[{account.account_name}] 分享登录失败: {login_info.error}")
+        # URL解码处理
+        if '//' not in sign_url:
+            sign_url = url_unquote(sign_url)
+            if '3A//' in sign_url:
+                sign_url = url_unquote(sign_url)
+
+        headers = {
+            'Host': 'mcs-mimp-web.sf-express.com',
+            'upgrade-insecure-requests': '1',
+            'user-agent': user_agent or 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 mediaCode=SFEXPRESSAPP-iOS-ML',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            'sec-fetch-site': 'none',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-user': '?1',
+            'sec-fetch-dest': 'document',
+            'accept-language': 'zh-CN,zh',
+            'platform': 'MINI_PROGRAM',
+        }
+
+        try:
+            session = requests.Session()
+            session.verify = False
+            response = session.get(sign_url, headers=headers, timeout=30)
+            cookies_dict = session.cookies.get_dict()
+
+            user_id = cookies_dict.get('_login_user_id_', '')
+            phone = cookies_dict.get('_login_mobile_', '')
+
+            if not user_id:
+                return None
+
+            # 构建cookie字符串
+            cookie_str = "; ".join([f"{k}={v}" for k, v in cookies_dict.items()])
+
+            logger.info(f"URL登录成功，手机号: {phone[:3]}****{phone[7:]}" if phone else "URL登录成功")
+
+            return ShareLoginInfo(
+                success=True,
+                user_id=user_id,
+                token="",
+                cookies=cookie_str,
+                raw=cookies_dict,
+                error=""
+            )
+        except Exception as e:
+            logger.error(f"URL登录失败: {e}")
+            return None
+
+    def fetch_login_info(self, account: SFAccountConfig) -> Optional[ShareLoginInfo]:
+        """获取账号登录信息（自动识别 URL 格式或 sign 格式）"""
+        sign = account.sign
+
+        # 如果是完整URL，使用URL直接登录（兼容旧版sfsyUrl）
+        if '://' in sign or 'mcs-mimp' in sign:
+            logger.info(f"[{account.account_name}] 检测到完整URL，使用URL直接登录")
+            login_info = self._url_login(sign, account.user_agent or None)
+        else:
+            logger.info(f"[{account.account_name}] 使用sign参数登录")
+            login_info = SFExpressAPI.share_login(
+                sign=sign,
+                user_agent=account.user_agent or None
+            )
+
+        if not login_info or not login_info.success:
+            error_msg = login_info.error if login_info else "登录返回为空"
+            logger.warning(f"[{account.account_name}] 登录失败: {error_msg}")
             return None
 
         if not login_info.user_id or not login_info.cookies:
-            logger.warning(f"[{account.account_name}] 分享登录返回数据不完整")
+            logger.warning(f"[{account.account_name}] 登录返回数据不完整")
             return None
 
-        logger.info(f"[{account.account_name}] 分享登录成功")
+        logger.info(f"[{account.account_name}] 登录成功")
         return login_info
 
     def auto_sign_and_fetch_package(self, sf_api: SFExpressAPI, account_name: str) -> Dict[str, Any]:
