@@ -193,6 +193,7 @@ def telegram_bot(title, content):
             response = requests.post(url=url, headers=headers, params=payload, proxies=proxies).json()
         except:
             print('推送失败！')
+            return
         if response['ok']:
             print('推送成功！')
         else:
