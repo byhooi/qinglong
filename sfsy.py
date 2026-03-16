@@ -776,8 +776,7 @@ class RUN:
                     success = False
         except Exception as e:
             print(e)
-        finally:
-            return success
+        return success
 
     def anniversary2024_HappyElimination_win(self, index):
         url = 'https://mcs-mimp-web.sf-express.com/mcs-mimp/commonPost/~memberNonactivity~anniversary2024HappyEliminationService~win'
@@ -798,8 +797,7 @@ class RUN:
         except Exception as e:
             print(e)
             success = False
-        finally:
-            return success
+        return success
 
     def anniversary2024_TopicPk_chooseSide(self, index):
         url = 'https://mcs-mimp-web.sf-express.com/mcs-mimp/commonPost/~memberNonactivity~anniversary2024TopicPkService~chooseSide'
@@ -819,8 +817,7 @@ class RUN:
         except Exception as e:
             print(e)
             success = False
-        finally:
-            return success
+        return success
 
     def anniversary2024_TopicPk_topicList(self):
         url = 'https://mcs-mimp-web.sf-express.com/mcs-mimp/commonPost/~memberNonactivity~anniversary2024TopicPkService~topicList'
