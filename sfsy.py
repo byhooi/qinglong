@@ -1,5 +1,8 @@
-
-# cron: 11 6,9,12,15,18 * * *
+# 打开小程序或APP-我的-积分, 捉以下几种url之一,把整个url放到变量 sfsyUrl 里,多账号换行分割
+# https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/shareGiftReceiveRedirect
+# https://mcs-mimp-web.sf-express.com/mcs-mimp/share/app/shareRedirect
+# https://mcs-mimp-web.sf-express.com/mcs-mimp/share/weChat/activityRedirect
+# cron: 11 9,15 * * *
 # const $ = new Env("顺丰速运");
 import hashlib
 import json
