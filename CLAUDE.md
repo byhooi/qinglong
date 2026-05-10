@@ -16,19 +16,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 主要脚本
 
-1. **顺丰速运签到** (`sfsy.py`)
-   - Cron: `12 */6 * * *`
-   - 环境变量: `sfsyUrl` (URL格式，多账号换行分割)
-   - 支持功能: 签到、会员日任务、积分查询
-   - 可选: 末尾添加 `@UID_xxx` 指定特定用户推送
-
-2. **一点万象签到** (`ydwx.py`)
+1. **一点万象签到** (`ydwx.py`)
    - Cron: `2 8 * * *`
    - 环境变量: `ydwx_deviceParams`, `ydwx_token` (多账号用 `&` 分隔)
 
-3. **备份脚本** (`backup/`)
+2. **华润通微信版签到** (`huaruntong/huaruntong_wx/`)
+   - Cron: `20 8 * * *`
+   - 环境变量: `hrt_wx` (JSON格式，accounts数组支持多账号)
+   - 文件结构: `api.py` (API封装) + `main.py` (签到主逻辑)
+
+3. **华润通文体未来荟签到** (`huaruntong/wentiweilaihui/`)
+   - Cron: `10 8 * * *`
+   - 环境变量: `wentiweilaihui` (JSON格式，accounts数组支持多账号)
+   - 文件结构: `api.py` (API封装) + `main.py` (签到主逻辑)
+
+4. **备份脚本** (`backup/`)
    - 包含已停用或历史版本的签到脚本
-   - 如: GLaDOS、999会员中心、混合公园等
+   - `backup/sfsy.py` - 顺丰速运签到
+   - `backup/sf/` - 顺丰快递积分任务
+   - `backup/999/` - 华润通999答题
+   - `backup/hrt.py` - 华润通旧版
+   - 其他: GLaDOS、999会员中心、混合公园等
 
 ### 推送通知模块
 
@@ -80,16 +88,23 @@ except:
    - 在 `Log()` 函数中定义 `push_keywords` 列表
    - 控制台始终打印所有日志，推送仅包含关键词的信息
 3. **多账号支持**: 所有脚本支持多账号配置
-   - 环境变量使用换行符 (`\n`) 或 `&` 分隔多账号
-   - 支持 `@UID_xxx` 后缀指定特定用户推送
+   - 环境变量使用换行符 (`\n`)、`&` 或 JSON `accounts` 数组分隔多账号
+   - huaruntong 系列使用 JSON 格式 `{"accounts":[...]}` 统一管理多账号
+   - 支持 `@UID_xxx` 后缀指定特定用户推送 (URL分隔模式)
 4. **错误重试**: 网络请求包含重试机制 (通常3次)
 5. **Session管理**: 使用 `requests.session()` 保持会话
 6. **SSL验证**: 部分脚本禁用SSL验证 (`verify=False`)
 7. **统一推送**: 所有账号处理完成后统一调用 `send()` 推送，避免频繁通知
+8. **模块化结构**: huaruntong 系列使用子目录组织，`api.py` 封装 API 逻辑，`main.py` 处理签到流程，通过 `sys.path` 动态引入项目根目录的推送模块
 
 ### 关键实现细节
 
-**签名生成** (`sfsy.py` 为例):
+**JSON账户配置** (huaruntong 系列为例):
+- 使用 JSON 格式 `{"accounts":[...]}` 统一管理多账号
+- 每个账号包含 `account_name` 便于日志区分
+- `main.py` 中解析 JSON，遍历 accounts 数组处理
+
+**签名生成** (`backup/sfsy.py` 为例):
 - 使用 MD5 签名验证请求
 - 时间戳 + token + sysCode 组合生成签名
 - `getSign()` 方法自动更新请求头
@@ -102,6 +117,11 @@ except:
 - `do_request()` 统一处理 GET/POST 请求
 - 自动重试、超时控制、异常捕获
 - 返回标准化 JSON 格式
+
+**子目录模块导入** (huaruntong 系列):
+- `main.py` 通过 `sys.path.insert(0, str(project_root))` 引入项目根目录
+- `api.py` 作为本地模块被 `main.py` 直接 import
+- 推送模块 `sendNotify` 从项目根目录动态导入
 
 **通知模块架构**:
 - `sendNotify.py` 和 `sendNotify.js` 功能完全等价
@@ -125,8 +145,10 @@ except:
 ### 新增签到脚本的标准流程
 
 1. **选择语言和模板**
-   - Python脚本: 参考 `sfsy.py` (复杂API交互) 或 `ydwx.py` (简单签到)
+   - Python 简单脚本: 参考 `ydwx.py` (单文件，简单签到)
+   - Python 模块化脚本: 参考 `huaruntong/huaruntong_wx/` (子目录，api.py + main.py 分离)
    - JavaScript脚本: 参考 `backup/mixpark.js`
+   - 复杂API交互: 参考 `backup/sfsy.py` (签名生成、日期条件任务等)
 
 2. **实现核心功能**
    - 添加脚本头部注释 (`new Env`, `Cron`)
@@ -160,16 +182,17 @@ except:
 **本地测试脚本**:
 ```bash
 # Python 脚本
-python sfsy.py
 python ydwx.py
+python huaruntong/huaruntong_wx/main.py
+python huaruntong/wentiweilaihui/main.py
 
 # 设置环境变量后运行 (Windows)
-set sfsyUrl=你的URL
-python sfsy.py
+set ydwx_token=你的token
+python ydwx.py
 
 # 设置环境变量后运行 (Linux/macOS)
-export sfsyUrl="你的URL"
-python sfsy.py
+export ydwx_token="你的token"
+python ydwx.py
 ```
 
 **青龙面板部署**:
@@ -208,7 +231,7 @@ git push origin master
 ### 常见问题排查
 - **签到失败**: 检查 URL 格式是否正确，token 是否过期
 - **无推送通知**: 确认推送配置环境变量已设置，检查关键词过滤
-- **多账号失败**: 检查分隔符是否正确 (换行 vs `&`)
+- **多账号失败**: 检查分隔符或 JSON 格式是否正确 (换行 / `&` / JSON accounts 数组)
 - **网络错误**: 检查代理设置，某些脚本禁用了 SSL 验证
 
 ## 安全注意事项
