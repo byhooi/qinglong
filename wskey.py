@@ -17,8 +17,7 @@ from urllib.parse import unquote
 
 """
 new Env('wskey本地转换');
-57 21,9 * * * jd_wsck.py
-by:lonesomexz (Modified)
+cron: "58 21,9 * * *";
 """
 hadsend = True
 UserAgent = ""
