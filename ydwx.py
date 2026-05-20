@@ -4,10 +4,8 @@
 # @Author : github@wd210010 https://github.com/wd210010/just_for_happy
 # @Time : 2023/2/27 13:23
 # -------------------------------
-"""
-new Env('一点万象签到');
-cron: "2 8 * * *";
-"""
+# cron: 2 8 * * *
+# const $ = new Env('一点万象签到')
 import requests
 import time
 import hashlib
