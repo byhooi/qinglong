@@ -16,7 +16,7 @@ packages.urllib3.disable_warnings()
 from urllib.parse import unquote
 
 # new Env('wskey本地转换')
-# cron "58 21,9 * * *"
+# cron: 58 21,9 * * *
 hadsend = True
 UserAgent = ""
 
