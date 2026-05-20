@@ -17,7 +17,6 @@ from urllib.parse import unquote
 
 # new Env('wskey本地转换')
 # cron "58 21,9 * * *"
-# by:lonesomexz (Modified)
 hadsend = True
 UserAgent = ""
 
