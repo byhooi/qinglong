@@ -15,11 +15,9 @@ import uuid
 packages.urllib3.disable_warnings()
 from urllib.parse import unquote
 
-"""
-new Env('wskey本地转换');
-57 21,9 * * * jd_wsck.py
-by:lonesomexz (Modified)
-"""
+# new Env('wskey本地转换')
+# cron "58 21,9 * * *"
+# by:lonesomexz (Modified)
 hadsend = True
 UserAgent = ""
 
