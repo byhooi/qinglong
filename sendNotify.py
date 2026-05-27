@@ -190,7 +190,7 @@ def telegram_bot(title, content):
             proxyStr = "http://{}:{}".format(TG_PROXY_IP, TG_PROXY_PORT)
             proxies = {"http": proxyStr, "https": proxyStr}
         try:
-            response = requests.post(url=url, headers=headers, params=payload, proxies=proxies).json()
+            response = requests.post(url=url, headers=headers, data=payload, proxies=proxies, timeout=15).json()
         except:
             print('推送失败！')
             return
