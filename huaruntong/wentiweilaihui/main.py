@@ -18,6 +18,9 @@ from datetime import datetime
 from pathlib import Path
 from api import WenTiWeiLaiHuiAPI
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # 添加项目根目录到Python路径以导入sendNotify模块
 current_dir = Path(__file__).parent
 project_root = current_dir.parent.parent

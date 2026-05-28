@@ -1,6 +1,7 @@
 """
-华润通文体未来荟API接口
+华润通文体未来荟 API 接口
 """
+import os
 import requests
 import uuid
 import time
@@ -18,7 +19,7 @@ class WenTiWeiLaiHuiAPI:
         """
         self.token = token
         self.mobile = mobile
-        self.base_url = "https://wtmp.crland.com.cn"
+        self.base_url = os.getenv("wentiweilaihui_base_url", "https://wlhmobile.crland.com.cn").rstrip("/")
         self.user_agent = user_agent or 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080712) UnifiedPCMacWechat(0xf26405f0) XWEB/13910'
         self.headers = {
             'User-Agent': self.user_agent,
@@ -74,4 +75,3 @@ class WenTiWeiLaiHuiAPI:
             return response.json()
         except Exception as e:
             return {"success": False, "msg": f"请求失败: {str(e)}"}
-
