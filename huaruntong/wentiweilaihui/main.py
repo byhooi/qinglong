@@ -69,7 +69,12 @@ def process_account(account_config):
     print("=" * 50)
 
     # 创建API实例
-    api = WenTiWeiLaiHuiAPI(token, mobile, account_config.get('user_agent'))
+    api = WenTiWeiLaiHuiAPI(
+        token,
+        mobile,
+        account_config.get('user_agent'),
+        account_config.get('project_uuid') or account_config.get('projectUuid')
+    )
 
     # 执行签到
     print("\n开始签到...")
@@ -79,6 +84,7 @@ def process_account(account_config):
         msg = sign_result.get('msg', '签到成功')
         print(f"✓ 签到成功: {msg}")
         result_info['sign_message'] = msg
+        result_info['success'] = True
     else:
         msg = sign_result.get('msg', '签到失败')
         print(f"✗ 签到失败: {msg}")
@@ -105,7 +111,7 @@ def process_account(account_config):
     else:
         msg = points_result.get('msg', '查询失败')
         print(f"✗ 查询失败: {msg}")
-        if not result_info['error']:
+        if not result_info['success'] and not result_info['error']:
             result_info['error'] = msg
 
     print("\n" + "=" * 50)
@@ -135,9 +141,13 @@ def build_notification(all_results, start_time, end_time):
     for result in all_results:
         account_name = result.get('account_name', '未知账号')
         if result.get('success'):
-            points = result.get('points', 0)
-            available = result.get('available_points', 0)
-            content_parts.append(f"✅ [{account_name}] 总积分: {points} | 可用: {available}")
+            points = result.get('points')
+            available = result.get('available_points')
+            sign_message = result.get('sign_message') or '签到成功'
+            if points is None and available is None:
+                content_parts.append(f"✅ [{account_name}] {sign_message}")
+            else:
+                content_parts.append(f"✅ [{account_name}] {sign_message} | 总积分: {points} | 可用: {available}")
         else:
             error = result.get('error', '未知错误')
             if len(error) > 30:
