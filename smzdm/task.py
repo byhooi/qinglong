@@ -265,7 +265,7 @@ class SmzdmTask:
                 ok = self.dispatch_task(task, event_type)
                 if ok is not None:
                     notify_msg += self.task_notify(ok, name, "完成")
-                sleep_random(5, 15)
+                    sleep_random(5, 15)
             else:
                 notify_msg += f"⏭️{name}: 跳过，状态 {status}\n"
         return notify_msg
@@ -292,8 +292,8 @@ class SmzdmTask:
                 return self.do_comment_task(task)
             print("请设置 SMZDM_COMMENT 环境变量后再执行评论任务")
             return None
-        print(f"暂不支持任务类型: {event_type}")
-        return False
+        print(f"跳过不支持的任务类型: {event_type}")
+        return None
 
     def task_notify(self, success: bool, task_name: str, action: str) -> str:
         return f"{'🟢' if success else '❌'}{action}[{task_name}]任务{'成功' if success else '失败，请查看日志'}\n"
