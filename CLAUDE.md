@@ -12,6 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **容错处理**: 自动重试、异常捕获、降级处理
 - **多账号支持**: 统一的多账号处理架构
 
+> 仓库还有 `AGENTS.md`，记录了面向 AI 协作者的工程实践（命名、语法检查、提交规范），与本文件互补。
+
 ## 脚本类型和结构
 
 ### 主要脚本
@@ -30,7 +32,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - 环境变量: `wentiweilaihui` (JSON格式，accounts数组支持多账号)
    - 文件结构: `api.py` (API封装) + `main.py` (签到主逻辑)
 
-4. **备份脚本** (`backup/`)
+4. **京东 wskey 本地转换** (`wskey.py`)
+   - Cron: `58 21,9 * * *`
+   - 功能: 将 ws_key 转换为 JD cookie
+
+5. **V2EX 每日签到** (`v2ex/main.py`)
+   - Cron: `15 8 * * *`
+   - 环境变量: `v2ex` (JSON, accounts数组) 或 `V2EX_COOKIE`/`v2ex_cookie` (兼容, 换行或 `&` 分隔)
+
+6. **什么值得买签到/任务** (`smzdm/`)
+   - Cron: `10 8 * * *` (签到 `checkin.py`), `20 14 * * *` (任务 `task.py`)
+   - 环境变量: `smzdm` (JSON, accounts数组) 或 `SMZDM_COOKIE` (兼容, 换行或 `&` 分隔)
+   - 文件结构: `checkin.py` + `task.py` (各自自包含, 无共享模块, 对齐原 JS 入口风格)
+   - 依赖: `pycryptodome` (生成 sk 使用 DES 加密)
+
+7. **备份脚本** (`backup/`)
    - 包含已停用或历史版本的签到脚本
    - `backup/sfsy.py` - 顺丰速运签到
    - `backup/sf/` - 顺丰快递积分任务
@@ -185,6 +201,12 @@ except:
 python ydwx.py
 python huaruntong/huaruntong_wx/main.py
 python huaruntong/wentiweilaihui/main.py
+python v2ex/main.py
+python smzdm/checkin.py
+python smzdm/task.py
+
+# 语法检查 (无需运行即可校验)
+python -m py_compile v2ex/main.py smzdm/checkin.py smzdm/task.py
 
 # 设置环境变量后运行 (Windows)
 set ydwx_token=你的token
