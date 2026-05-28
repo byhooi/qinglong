@@ -60,12 +60,10 @@ def process_account(account_config):
         'success': False,
         'error': None,
         'sign_message': None,
-        'points': None,
-        'available_points': None
     }
 
     print("=" * 50)
-    print(f"账号: {account_name} ({mobile})")
+    print(f"账号: {account_name} ({mobile})" if mobile else f"账号: {account_name}")
     print("=" * 50)
 
     # 创建API实例
@@ -89,30 +87,6 @@ def process_account(account_config):
         msg = sign_result.get('msg', '签到失败')
         print(f"✗ 签到失败: {msg}")
         result_info['error'] = msg
-
-    # 查询积分
-    print("\n查询万象星积分...")
-    points_result = api.query_points()
-
-    if points_result.get("success"):
-        data = points_result.get("data", {})
-        points = data.get("points", 0)
-        available_points = data.get("availablePoints", 0)
-        hold_points = data.get("holdPoints", 0)
-
-        print(f"✓ 查询成功")
-        print(f"  总积分: {points}")
-        print(f"  可用积分: {available_points}")
-        print(f"  冻结积分: {hold_points}")
-
-        result_info['points'] = points
-        result_info['available_points'] = available_points
-        result_info['success'] = True
-    else:
-        msg = points_result.get('msg', '查询失败')
-        print(f"✗ 查询失败: {msg}")
-        if not result_info['success'] and not result_info['error']:
-            result_info['error'] = msg
 
     print("\n" + "=" * 50)
     return result_info
@@ -141,13 +115,8 @@ def build_notification(all_results, start_time, end_time):
     for result in all_results:
         account_name = result.get('account_name', '未知账号')
         if result.get('success'):
-            points = result.get('points')
-            available = result.get('available_points')
             sign_message = result.get('sign_message') or '签到成功'
-            if points is None and available is None:
-                content_parts.append(f"✅ [{account_name}] {sign_message}")
-            else:
-                content_parts.append(f"✅ [{account_name}] {sign_message} | 总积分: {points} | 可用: {available}")
+            content_parts.append(f"✅ [{account_name}] {sign_message}")
         else:
             error = result.get('error', '未知错误')
             if len(error) > 30:

@@ -1,8 +1,8 @@
 """
 华润通文体未来荟 API 接口
 """
-import requests
 import os
+import requests
 
 
 class WenTiWeiLaiHuiAPI:
@@ -51,7 +51,8 @@ class WenTiWeiLaiHuiAPI:
             return data
         if str(data.get("code")) == "200":
             data["success"] = True
-            data["msg"] = data.get("result") or data.get("text") or default_success_msg
+            result = data.get("result")
+            data["msg"] = result if isinstance(result, str) else (data.get("text") or default_success_msg)
             return data
         data["success"] = False
         data["msg"] = data.get("msg") or data.get("message") or data.get("text") or "接口请求失败"
@@ -74,19 +75,5 @@ class WenTiWeiLaiHuiAPI:
             response = requests.post(url, json=data, headers=self.headers, timeout=20)
             response.raise_for_status()
             return self.normalize_response(response.json(), "打卡成功")
-        except Exception as e:
-            return {"success": False, "msg": f"请求失败: {str(e)}"}
-
-    def query_points(self):
-        """
-        查询万象星积分
-        :return: 接口响应数据
-        """
-        url = f"{self.base_url}/pointsAccount/app/queryAccount"
-
-        try:
-            response = requests.post(url, json={}, headers=self.headers, timeout=20)
-            response.raise_for_status()
-            return self.normalize_response(response.json(), "查询成功")
         except Exception as e:
             return {"success": False, "msg": f"请求失败: {str(e)}"}
