@@ -22,13 +22,22 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 # 添加项目根目录到Python路径以导入sendNotify模块
-current_dir = Path(__file__).parent
-project_root = current_dir.parent.parent
-sys.path.insert(0, str(project_root))
+current_dir = Path(__file__).resolve().parent
+project_root = next(
+    (parent for parent in [current_dir, *current_dir.parents] if (parent / "sendNotify.py").exists()),
+    current_dir.parent.parent,
+)
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
+notifier_available = False
+notify_import_error = None
 try:
     from sendNotify import send
-except:
+    notifier_available = True
+except Exception as e:
+    notify_import_error = e
+
     def send(title, content):
         print(f"\n{title}\n{content}")
 
@@ -185,7 +194,10 @@ def main():
     try:
         title, content = build_notification(all_results, start_time, end_time)
         send(title, content)
-        print("✅ 推送通知发送成功")
+        if notifier_available:
+            print("✅ 推送通知流程执行完成")
+        else:
+            print(f"⚠️ 未加载 sendNotify.py，通知仅输出到日志: {notify_import_error}")
     except Exception as e:
         print(f"❌ 推送通知失败: {str(e)}")
 
