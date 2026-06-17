@@ -3,7 +3,6 @@
 
 #Modify: Kirin
 
-from curses.ascii import FS
 import sys
 import os, re
 import requests
@@ -29,6 +28,7 @@ TG_USER_ID = ''             # tg机器人的TG_USER_ID; secrets可填 1434078534
 TG_API_HOST=''              # tg 代理api
 TG_PROXY_IP = ''            # tg机器人的TG_PROXY_IP; secrets可填
 TG_PROXY_PORT = ''          # tg机器人的TG_PROXY_PORT; secrets可填
+TG_PROXY_AUTH = ''          # tg代理认证，格式 username:password
 DD_BOT_TOKEN = ''           # 钉钉机器人的DD_BOT_TOKEN; secrets可填
 DD_BOT_SECRET = ''          # 钉钉机器人的DD_BOT_SECRET; secrets可填
 QQ_SKEY = ''                # qq机器人的QQ_SKEY; secrets可填
@@ -54,6 +54,14 @@ if "TG_BOT_TOKEN" in os.environ and os.environ["TG_BOT_TOKEN"] and "TG_USER_ID" 
     TG_USER_ID = os.environ["TG_USER_ID"]
 if "TG_API_HOST" in os.environ and os.environ["TG_API_HOST"]:
     TG_API_HOST = os.environ["TG_API_HOST"]
+if "TG_PROXY_IP" in os.environ and os.environ["TG_PROXY_IP"]:
+    TG_PROXY_IP = os.environ["TG_PROXY_IP"]
+if "TG_PROXY_HOST" in os.environ and os.environ["TG_PROXY_HOST"] and not TG_PROXY_IP:
+    TG_PROXY_IP = os.environ["TG_PROXY_HOST"]
+if "TG_PROXY_PORT" in os.environ and os.environ["TG_PROXY_PORT"]:
+    TG_PROXY_PORT = os.environ["TG_PROXY_PORT"]
+if "TG_PROXY_AUTH" in os.environ and os.environ["TG_PROXY_AUTH"]:
+    TG_PROXY_AUTH = os.environ["TG_PROXY_AUTH"]
 if "DD_BOT_TOKEN" in os.environ and os.environ["DD_BOT_TOKEN"] and "DD_BOT_SECRET" in os.environ and os.environ["DD_BOT_SECRET"]:
     DD_BOT_TOKEN = os.environ["DD_BOT_TOKEN"]
     DD_BOT_SECRET = os.environ["DD_BOT_SECRET"]
@@ -175,29 +183,38 @@ def telegram_bot(title, content):
             print("tg服务的bot_token或者user_id未设置!!\n取消推送")
             return
         print("tg服务启动")
-        if TG_API_HOST:
-            if 'http' in TG_API_HOST:
-                url = f"{TG_API_HOST}/bot{TG_BOT_TOKEN}/sendMessage"
+        tg_api_host = TG_API_HOST.strip().rstrip("/")
+        if tg_api_host:
+            if tg_api_host.startswith(("http://", "https://")):
+                url = f"{tg_api_host}/bot{bot_token}/sendMessage"
             else:
-                url = f"https://{TG_API_HOST}/bot{TG_BOT_TOKEN}/sendMessage"
+                url = f"https://{tg_api_host}/bot{bot_token}/sendMessage"
         else:
-            url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        payload = {'chat_id': str(TG_USER_ID), 'text': f'{title}\n\n{content}', 'disable_web_page_preview': 'true'}
+        payload = {'chat_id': str(user_id), 'text': f'{title}\n\n{content}', 'disable_web_page_preview': 'true'}
         proxies = None
         if TG_PROXY_IP and TG_PROXY_PORT:
-            proxyStr = "http://{}:{}".format(TG_PROXY_IP, TG_PROXY_PORT)
+            proxy_auth = "{}@".format(os.environ.get("TG_PROXY_AUTH")) if os.environ.get("TG_PROXY_AUTH") else ""
+            proxyStr = "http://{}{}:{}".format(proxy_auth, TG_PROXY_IP, TG_PROXY_PORT)
             proxies = {"http": proxyStr, "https": proxyStr}
         try:
-            response = requests.post(url=url, headers=headers, data=payload, proxies=proxies, timeout=15).json()
-        except:
-            print('推送失败！')
+            resp = requests.post(url=url, headers=headers, data=payload, proxies=proxies, timeout=15)
+            try:
+                response = resp.json()
+            except ValueError:
+                print(f'tg推送失败：HTTP {resp.status_code}，响应不是JSON：{resp.text[:200]}')
+                return
+        except requests.exceptions.RequestException as e:
+            print(f'tg推送失败：网络异常：{e}')
             return
-        if response['ok']:
+        if response.get('ok'):
             print('推送成功！')
         else:
-            print('推送失败！')
+            error_code = response.get('error_code', 'unknown')
+            description = response.get('description', response)
+            print(f'tg推送失败：HTTP {resp.status_code}，error_code={error_code}，description={description}')
     except Exception as e:
         print(e)
 
@@ -260,7 +277,6 @@ def pushplus_bot(title, content):
 
 
 
-print("xxxxxxxxxxxx")
 def wecom_key(title, content):
     print("\n")
     if not QYWX_KEY:
