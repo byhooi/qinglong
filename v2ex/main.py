@@ -332,18 +332,17 @@ def main() -> None:
     print("=" * 50)
 
     accounts = load_accounts()
-    if not accounts:
-        return
-
-    print(f"共获取到 {len(accounts)} 个账号")
     results: list[AccountResult] = []
 
-    for index, account in enumerate(accounts):
-        results.append(process_account(account))
-        if index < len(accounts) - 1:
-            wait_seconds = random.randint(2, 5)
-            print(f"等待 {wait_seconds} 秒后处理下一个账号...")
-            time.sleep(wait_seconds)
+    if accounts:
+        print(f"共获取到 {len(accounts)} 个账号")
+
+        for index, account in enumerate(accounts):
+            results.append(process_account(account))
+            if index < len(accounts) - 1:
+                wait_seconds = random.randint(2, 5)
+                print(f"等待 {wait_seconds} 秒后处理下一个账号...")
+                time.sleep(wait_seconds)
 
     end_time = datetime.now()
     print("=" * 50)
