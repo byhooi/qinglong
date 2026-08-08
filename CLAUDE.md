@@ -255,6 +255,7 @@ git push origin master
 - **无推送通知**: 确认推送配置环境变量已设置，检查关键词过滤
 - **多账号失败**: 检查分隔符或 JSON 格式是否正确 (换行 / `&` / JSON accounts 数组)
 - **网络错误**: 检查代理设置，某些脚本禁用了 SSL 验证
+- **`UNSAFE_LEGACY_RENEGOTIATION_DISABLED` (OpenSSL 3.x)**: 服务器偶发触发旧版重协商，需在 SSL context 显式放行。用硬编码 `SSL_OP_LEGACY_SERVER_CONNECT = 0x4`（Python 3.10 之前无 `ssl.OP_LEGACY_SERVER_CONNECT` 常量）；且 requests 的直连和代理两条连接路径都要覆盖，否则代理路径仍会报错。参考 `huaruntong/wentiweilaihui/api.py` 的 `LegacyRenegotiationAdapter`
 
 ## 安全注意事项
 
