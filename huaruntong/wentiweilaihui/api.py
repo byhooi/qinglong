@@ -2,7 +2,43 @@
 华润通文体未来荟 API 接口
 """
 import os
+import ssl
+import sys
+import time
+
 import requests
+from requests.adapters import HTTPAdapter
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# OpenSSL 3.x 默认拒绝服务器的旧版重协商 (UNSAFE_LEGACY_RENEGOTIATION_DISABLED)
+# 该服务器偶发触发旧版重协商，需要显式放行
+_LEGACY_RENEGOTIATION = getattr(ssl, "OP_LEGACY_SERVER_CONNECT", None)
+
+
+class LegacyRenegotiationAdapter(HTTPAdapter):
+    """允许服务端 legacy renegotiation 的 HTTP 适配器。
+
+    该服务器（或其负载均衡）偶发触发旧版重协商，OpenSSL 3.x 默认拒绝。
+    直连和代理两条连接路径都要使用带 OP_LEGACY_SERVER_CONNECT 的 context。
+    """
+
+    @staticmethod
+    def _legacy_context():
+        ctx = ssl.create_default_context()
+        ctx.options |= _LEGACY_RENEGOTIATION
+        return ctx
+
+    def init_poolmanager(self, *args, **kwargs):
+        if _LEGACY_RENEGOTIATION is not None:
+            kwargs["ssl_context"] = self._legacy_context()
+        return super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, proxy, **proxy_kwargs):
+        if _LEGACY_RENEGOTIATION is not None:
+            proxy_kwargs.setdefault("ssl_context", self._legacy_context())
+        return super().proxy_manager_for(proxy, **proxy_kwargs)
 
 
 class WenTiWeiLaiHuiAPI:
@@ -31,6 +67,10 @@ class WenTiWeiLaiHuiAPI:
             'Authorization': self.format_authorization(self.token),
             'Referer': 'https://servicewechat.com/wx020209beec4251e0/43/page-frame.html',
         }
+        # 复用同一会话，并对该服务器放行旧版重协商
+        self.session = requests.Session()
+        if _LEGACY_RENEGOTIATION is not None:
+            self.session.mount("https://", LegacyRenegotiationAdapter())
 
     @staticmethod
     def format_authorization(token):
@@ -71,9 +111,17 @@ class WenTiWeiLaiHuiAPI:
             "projectUuid": self.project_uuid
         }
 
-        try:
-            response = requests.post(url, json=data, headers=self.headers, timeout=20)
-            response.raise_for_status()
-            return self.normalize_response(response.json(), "打卡成功")
-        except Exception as e:
-            return {"success": False, "msg": f"请求失败: {str(e)}"}
+        # 该服务器偶发 TLS 重协商失败，重试 3 次兜底
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                response = self.session.post(url, json=data, headers=self.headers, timeout=20)
+                response.raise_for_status()
+                return self.normalize_response(response.json(), "打卡成功")
+            except Exception as e:
+                last_error = e
+                if attempt < 3:
+                    print(f"⚠️  签到请求失败(第{attempt}次): {e}，稍后重试...")
+                    time.sleep(2 * attempt)
+
+        return {"success": False, "msg": f"请求失败: {last_error}"}
