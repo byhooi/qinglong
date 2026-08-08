@@ -7,37 +7,38 @@ import sys
 import time
 
 import requests
+import urllib3
 from requests.adapters import HTTPAdapter
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 # OpenSSL 3.x 默认拒绝服务器的旧版重协商 (UNSAFE_LEGACY_RENEGOTIATION_DISABLED)
-# 该服务器偶发触发旧版重协商，需要显式放行
-_LEGACY_RENEGOTIATION = getattr(ssl, "OP_LEGACY_SERVER_CONNECT", None)
+# 该服务器偶发触发旧版重协商，需要显式放行。
+# SSL_OP_LEGACY_SERVER_CONNECT 在 OpenSSL 1.1.1+ 中恒为 0x4，直接使用原始值，
+# 避免依赖 ssl.OP_LEGACY_SERVER_CONNECT 常量（Python < 3.10 未暴露该常量）。
+SSL_OP_LEGACY_SERVER_CONNECT = 0x4
 
 
 class LegacyRenegotiationAdapter(HTTPAdapter):
     """允许服务端 legacy renegotiation 的 HTTP 适配器。
 
     该服务器（或其负载均衡）偶发触发旧版重协商，OpenSSL 3.x 默认拒绝。
-    直连和代理两条连接路径都要使用带 OP_LEGACY_SERVER_CONNECT 的 context。
+    直连和代理两条连接路径都要使用带 SSL_OP_LEGACY_SERVER_CONNECT 的 context。
     """
 
     @staticmethod
     def _legacy_context():
         ctx = ssl.create_default_context()
-        ctx.options |= _LEGACY_RENEGOTIATION
+        ctx.options |= SSL_OP_LEGACY_SERVER_CONNECT
         return ctx
 
     def init_poolmanager(self, *args, **kwargs):
-        if _LEGACY_RENEGOTIATION is not None:
-            kwargs["ssl_context"] = self._legacy_context()
+        kwargs["ssl_context"] = self._legacy_context()
         return super().init_poolmanager(*args, **kwargs)
 
     def proxy_manager_for(self, proxy, **proxy_kwargs):
-        if _LEGACY_RENEGOTIATION is not None:
-            proxy_kwargs.setdefault("ssl_context", self._legacy_context())
+        proxy_kwargs.setdefault("ssl_context", self._legacy_context())
         return super().proxy_manager_for(proxy, **proxy_kwargs)
 
 
@@ -69,8 +70,7 @@ class WenTiWeiLaiHuiAPI:
         }
         # 复用同一会话，并对该服务器放行旧版重协商
         self.session = requests.Session()
-        if _LEGACY_RENEGOTIATION is not None:
-            self.session.mount("https://", LegacyRenegotiationAdapter())
+        self.session.mount("https://", LegacyRenegotiationAdapter())
 
     @staticmethod
     def format_authorization(token):
@@ -120,6 +120,12 @@ class WenTiWeiLaiHuiAPI:
                 return self.normalize_response(response.json(), "打卡成功")
             except Exception as e:
                 last_error = e
+                if attempt == 1:
+                    # 输出环境诊断，便于排查 SSL 类故障
+                    proxies = {k: v for k, v in os.environ.items() if k.lower().endswith("_proxy")}
+                    print(f"ℹ️  诊断: Python {sys.version.split()[0]}, urllib3 {urllib3.__version__}, "
+                          f"adapter={type(self.session.get_adapter('https://')).__name__}, "
+                          f"env_proxy={proxies or '无'}")
                 if attempt < 3:
                     print(f"⚠️  签到请求失败(第{attempt}次): {e}，稍后重试...")
                     time.sleep(2 * attempt)
