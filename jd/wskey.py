@@ -28,6 +28,7 @@ import struct
 import sys
 import time
 import uuid
+from urllib.parse import unquote
 
 WSKEY_MODE = 0
 # 0 = Default / 1 = Debug!
@@ -192,6 +193,12 @@ def push_collect(text):
 def push_flush():
     if push_msgs:
         ql_send("\n".join(push_msgs))
+
+
+def pin_name(text):
+    """从 pt_pin=xxx; 或 pin=xxx;wskey=xxx; 中取出账号名用于推送, URL 编码的中文账号名一并解码"""
+    matched = re.search(r'pin=([^;\s]+)', text)
+    return unquote(matched.group(1) if matched else text)
 
 
 # 登录青龙 返回值 token
@@ -537,8 +544,7 @@ def ql_update(eid, newck):  # 方法 青龙更新变量 传递 id cookie
     res = ql_api("PUT", api, body)
     if res.get('code') != 200:  # 更新失败时记录并推送, 避免静默失败
         logger.info(f"\n账号更新失败: {str(res)[:200]}\n")
-        pin = re.search(r'pt_pin=[^;]+', newck)
-        push_collect(f"账号: {pin.group(0) if pin else '?'}; JD_COOKIE 更新失败, 请查看日志")
+        push_collect(f"{pin_name(newck)}；JD_COOKIE更新失败，请查看日志")
     ql_enable(eid)
 
 
@@ -570,7 +576,7 @@ def ql_insert(i_ck):  # 方法 插入新变量
         logger.info("\n账号添加完成\n--------------------\n")  # 标准日志输出
     else:
         logger.info("\n账号添加失败\n--------------------\n")  # 标准日志输出
-        push_collect("新账号添加到青龙失败, 请查看日志")
+        push_collect(f"{pin_name(i_ck)}；新账号添加到青龙失败，请查看日志")
 
 
 def check_port():  # 方法 检查变量传递端口
@@ -623,11 +629,11 @@ if __name__ == '__main__':  # Python主函数执行入口
                     ql_update(eid, return_ws)  # 函数 ql_update 参数 eid JD_COOKIE
                 elif WSKEY_AUTO_DISABLE:
                     logger.info(str(wspin) + "账号失效")  # 标准日志输出
-                    push_collect(f"账号: {wspin} WsKey疑似失效")  # 设置推送内容
+                    push_collect(f"{pin_name(wspin)}；Wskey疑似失效")  # 设置推送内容
                 else:
                     logger.info(str(wspin) + "账号禁用")  # 标准日志输出
                     ql_disable(eid)  # 执行方法[ql_disable] 传递 eid
-                    push_collect(f"账号: {wspin} WsKey疑似失效, 已禁用Cookie")
+                    push_collect(f"{pin_name(wspin)}；Wskey疑似失效，已禁用Cookie")
         else:
             logger.info("\n新wskey\n")  # 标准日志分支
             return_ws = getToken(ws)  # 使用 WSKEY 请求获取 JD_COOKIE bool jd_ck
@@ -635,7 +641,7 @@ if __name__ == '__main__':  # Python主函数执行入口
                 logger.info("wskey转换成功\n")  # 标准日志输出
                 ql_insert(return_ws)  # 调用方法 [ql_insert]
             else:
-                push_collect(f"账号: {wspin} 新wskey转换失败, 请查看日志")
+                push_collect(f"{pin_name(wspin)}；新wskey转换失败，请查看日志")
         if index < len(wslist) - 1:  # 最后一个账号处理完后无需再等待
             logger.info(f"暂停{sleepTime}秒\n")  # 标准日志输出
             time.sleep(sleepTime)  # 脚本休眠
