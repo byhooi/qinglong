@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-本仓库是面向青龙面板的自动化脚本集合。根目录放通用脚本和通知模块，例如 `sendNotify.py`、`sendNotify.js`、`wskey.py`、`ydwx.py`。业务脚本按服务拆分目录，例如 `v2ex/main.py`、`huaruntong/huaruntong_wx/main.py`、`huaruntong/wentiweilaihui/api.py`。`backup/` 存放历史或备用脚本，修改前先确认是否仍被使用。
+本仓库是面向青龙面板的自动化脚本集合。根目录放通用脚本和通知模块，例如 `sendNotify.py`、`sendNotify.js`、`ydwx.py`。业务脚本按服务拆分目录，例如 `jd/wskey.py`、`jd/jd_CheckCK.js`、`v2ex/main.py`、`huaruntong/huaruntong_wx/main.py`、`huaruntong/wentiweilaihui/api.py`。`backup/` 存放历史或备用脚本，修改前先确认是否仍被使用。
 
 新增脚本优先放入独立目录，入口文件命名为 `main.py` 或清晰的 `*.js` 文件，并在文件顶部写明青龙任务名、cron 示例和所需环境变量。
 

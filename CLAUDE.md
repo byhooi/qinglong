@@ -32,21 +32,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - 环境变量: `wentiweilaihui` (JSON格式，accounts数组支持多账号)
    - 文件结构: `api.py` (API封装) + `main.py` (签到主逻辑)
 
-4. **京东 wskey 本地转换** (`wskey.py`)
+4. **京东 wskey 本地转换** (`jd/wskey.py`)
    - Cron: `58 21,9 * * *`
-   - 功能: 将 ws_key 转换为 JD cookie
+   - 功能: 将 ws_key 转换为 JD cookie 并写回青龙面板的 `JD_COOKIE` 变量 (仅能在青龙容器内运行)
+   - 环境变量: `JD_WSCK` (多账号用 `&` 或换行分隔); 可选 `QL_PORT`、`WSKEY_SLEEP`、`WSKEY_TRY_COUNT`、`WSKEY_UPDATE_HOUR`、`WSKEY_DISCHECK`、`WSKEY_AUTO_DISABLE`、`WSKEY_SEND=disable`
+   - 推送: 失效/失败信息在所有账号处理完后统一推送一次
 
-5. **V2EX 每日签到** (`v2ex/main.py`)
+5. **京东 CK 检测** (`jd/jd_CheckCK.js`)
+   - Cron: `10 8,22 * * *`
+   - 功能: 检测青龙面板中所有 `JD_COOKIE` 的有效性, 失效自动禁用, 恢复可自动启用, 结果按分组汇总推送
+   - 环境变量 (均可选): `CHECKCK_SHOWSUCCESSCK`、`CHECKCK_CKALWAYSNOTIFY`、`CHECKCK_CKAUTOENABLE`、`CHECKCK_CKNOWARNERROR`、`CHECKCK_ALLNOTIFY`、`BEANCHANGE_USERGP2/3/4`、`QL_PORT`
+   - 文件结构: `jd/jd_CheckCK.js` (检测主逻辑) + `jd/function/ql.js` (青龙 API 封装, 只需提供 `getEnvs`/`getstatus`/`DisableCk`/`EnableCk`; 仓库自带版本只用 Node 原生 http, 也可换成 ccwav/QLScript2 的同名文件)
+   - 京东相关脚本统一放在 `jd/` 目录, 通过 `../sendNotify` / `sys.path` 引入根目录的推送模块
+
+6. **V2EX 每日签到** (`v2ex/main.py`)
    - Cron: `15 8 * * *`
    - 环境变量: `v2ex` (JSON, accounts数组) 或 `V2EX_COOKIE`/`v2ex_cookie` (兼容, 换行或 `&` 分隔)
 
-6. **什么值得买签到/任务** (`smzdm/`)
+7. **什么值得买签到/任务** (`smzdm/`)
    - Cron: `10 8 * * *` (签到 `checkin.py`), `20 14 * * *` (任务 `task.py`)
    - 环境变量: `smzdm` (JSON, accounts数组) 或 `SMZDM_COOKIE` (兼容, 换行或 `&` 分隔)
    - 文件结构: `checkin.py` + `task.py` (各自自包含, 无共享模块, 对齐原 JS 入口风格)
    - 依赖: `pycryptodome` (生成 sk 使用 DES 加密)
 
-7. **备份脚本** (`backup/`)
+8. **备份脚本** (`backup/`)
    - 包含已停用或历史版本的签到脚本
    - `backup/sfsy.py` - 顺丰速运签到
    - `backup/sf/` - 顺丰快递积分任务
@@ -206,7 +215,8 @@ python smzdm/checkin.py
 python smzdm/task.py
 
 # 语法检查 (无需运行即可校验)
-python -m py_compile v2ex/main.py smzdm/checkin.py smzdm/task.py
+python -m py_compile jd/wskey.py v2ex/main.py smzdm/checkin.py smzdm/task.py
+node --check jd/jd_CheckCK.js && node --check jd/function/ql.js
 
 # 设置环境变量后运行 (Windows)
 set ydwx_token=你的token
