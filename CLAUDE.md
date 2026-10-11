@@ -232,6 +232,15 @@ python ydwx.py
 2. 添加定时任务，配置 Cron 表达式
 3. 手动运行或等待定时执行
 
+**dylan 系列脚本反混淆**:
+dylan 来源的京东脚本（`jd_OnceApply.js`、`jd_AutoEval.js` 等）是混淆发布的，源码无明文。
+需要排查其依赖/接口/cookie 类型时，用 `tools/decode-dylan.js` 还原字符串表：
+```bash
+node tools/decode-dylan.js ../jdpro/jd_OnceApply.js            # 列出全部明文
+node tools/decode-dylan.js ../jdpro/jd_AutoEval.js --grep http # 按关键字过滤
+```
+原理与混淆结构详见 `tools/README.md`。
+
 **Git操作**:
 ```bash
 # 查看仓库状态
