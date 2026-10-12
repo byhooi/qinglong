@@ -55,8 +55,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - 文件结构: `checkin.py` + `task.py` (各自自包含, 无共享模块, 对齐原 JS 入口风格)
    - 依赖: `pycryptodome` (生成 sk 使用 DES 加密)
 
-8. **备份脚本** (`backup/`)
+8. **京东一键价保** (`jd/jd_OnceApply.js`)
+   - dylan 系列混淆脚本, 来源 `6dylan6/jdpro_beta`; 依赖 `jd/function/dylans.js` + `dylib.js`
+   - **无开关变量, 默认执行**; 可选 `DY_PROXY` (代理)、`WP_APP_TOKEN_ONE`
+   - 与评价脚本不同, 它**没有** pinjia.json 远程校验
+
+9. **备份脚本** (`backup/`)
    - 包含已停用或历史版本的签到脚本
+   - `backup/jd_AutoEval/` - 京东带图评价晒单 (**2026-10 停用**: 评价接口 403 风控, 见下文「403 Forbidden 排查」)
    - `backup/sfsy.py` - 顺丰速运签到
    - `backup/sf/` - 顺丰快递积分任务
    - `backup/999/` - 华润通999答题
@@ -202,6 +208,24 @@ except:
 2. 提交信息使用 `refactor: 停用xxx签到` 格式
 3. 不删除代码，保留作为参考
 
+**迁移到 `backup/` 时的路径处理**（dylan 系列为例）:
+dylan 脚本依赖同目录的 `function/` 模块与 `jd/` 下的共用模块，搬进 `backup/<名字>/` 后
+需要把 require 路径整体上移两层。以 `backup/jd_AutoEval/` 为例:
+
+| 原路径 | 新路径 |
+|---|---|
+| `../sendNotify` | `../../sendNotify` |
+| `./jdCookie.js` | `../../jd/jdCookie.js` |
+| `./USER_AGENTS` | `../../jd/USER_AGENTS` |
+| `./function/dylib.js` | `../../jd/function/dylib.js` |
+| `./function/proxy.js` | `../../jd/function/proxy.js` |
+| `./function/dylanx` | **不动**（随脚本一起搬到 `backup/<名字>/function/`） |
+
+判定哪些模块该跟着搬: 用 `grep -rl "function/<模块名>" jd/ --include="*.js"` 看引用者数量。
+**只被该脚本引用的**（如 `dylanx` 只被 `jd_AutoEval` 引用）随脚本搬走；
+**被多个脚本共用的**（`dylib`、`proxy`、`jdCookie`、`USER_AGENTS`）留在 `jd/` 原地。
+搬迁用 `git mv` 以保留文件历史。
+
 ## 常用命令
 
 **本地测试脚本**:
@@ -233,13 +257,67 @@ python ydwx.py
 3. 手动运行或等待定时执行
 
 **dylan 系列脚本反混淆**:
-dylan 来源的京东脚本（`jd_OnceApply.js`、`jd_AutoEval.js` 等）是混淆发布的，源码无明文。
+dylan 来源的京东脚本（`jd/jd_OnceApply.js`、`backup/jd_AutoEval/jd_AutoEval.js` 等）是混淆发布的，源码无明文。
 需要排查其依赖/接口/cookie 类型时，用 `tools/decode-dylan.js` 还原字符串表：
 ```bash
-node tools/decode-dylan.js ../jdpro/jd_OnceApply.js            # 列出全部明文
-node tools/decode-dylan.js ../jdpro/jd_AutoEval.js --grep http # 按关键字过滤
+node tools/decode-dylan.js jd/jd_OnceApply.js                    # 列出全部明文
+node tools/decode-dylan.js backup/jd_AutoEval/jd_AutoEval.js --grep http  # 按关键字过滤
 ```
 原理与混淆结构详见 `tools/README.md`。
+
+> 注意: `tools/decode-dylan.js` 只适配「入口脚本」结构（前缀以 `const X=$[...]` 开头）。
+> `jd/function/*.js` 模块文件结构不同（单行、以 `module[...]={...}` 导出），
+> 直接跑会报 `前缀执行失败：Unexpected token ';'`。解模块时改用「取 `module[` 之前作前缀」
+> 并扫描顶层 `const`/`function` 名的变体。
+
+**dylan 脚本的运行时依赖**:
+`backup/jd_AutoEval/jd_AutoEval.js` 与 `jd/jd_OnceApply.js` 及其 `function/*.js`
+硬依赖以下 npm 包，青龙容器需预装（本地复现时同样要装，否则依次报 `Cannot find module`）:
+
+| 包 | 需要者 |
+|---|---|
+| `sharp` | 仅 `jd_AutoEval`（老青龙装 `sharp@0.32.6` 之前版本, 如 `0.31.0`/`0.32.0`） |
+| `jsdom` | 仅 `jd_OnceApply` |
+| `crypto-js`、`got`、`axios`、`https-proxy-agent`、`tough-cookie`、`big-integer` | 两者共用（`big-integer` 为 `dylans` 用） |
+
+> 本地无 `package.json` 时，`npm install --no-save <包>` **每次都会清掉上一次装的包**，
+> 必须一次性把所有依赖列在同一条命令里。
+
+**403 Forbidden 排查**（已导致 `jd_AutoEval` 停用）:
+`backup/jd_AutoEval/jd_AutoEval.js` 的评价环节报 `Response code 403 (Forbidden)`
+（got 库的标准错误文本），判定为**出口 IP 被京东风控**，而非脚本问题。判断依据:
+- 脚本自身帮助文本即写明「403换IP试试」
+- 签名由本地生成且格式合法（见下），京东是"收下后拒绝"
+- 评价类接口涉及 UGC 发布，风控比查价的价保严格得多——所以同一 cookie 下
+  `jd_OnceApply` 正常、`jd_AutoEval` 403 属正常现象
+
+应对: 换 IP / 配 `DP_POOL` 代理池、调小 `EVALNUM`、拉长定时任务间隔。
+本次未验证换 IP 是否奏效，故先停用归档；日后若要复活，从 `backup/jd_AutoEval/`
+搬回 `jd/` 并按上文「迁移到 backup 时的路径处理」反向改回 require 路径即可。
+
+**`dylanx.js` 的四个 getbody 方法**（`jd_AutoEval` 走 `dylanx`，`jd_OnceApply` 走 `dylans`）:
+
+| 方法 | 依赖 | 状态 |
+|---|---|---|
+| `getbody` | — | 直接抛异常 |
+| `getbody2` | `http://api.nolanstore.cc/sign` | 服务已死 (ECONNRESET) |
+| `getbody3` | `https://6dy.jdpro.site/sign` | 服务已死 (ECONNRESET) |
+| `getbody4` | 无远程依赖, 本地生成 | **可用** |
+
+`getbody4` 产出完整合法参数串，形如
+`clientVersion=..&client=android&networkType=wifi&ef=1&ep={JSON}&st=..&sign=<32位MD5>&sv=102&body=..`。
+上述 pinjia.json 短接写入的正是 `getbody4`，即绕开已死的两个远程签名服务的路径。
+（`dylans` 则额外导出 `H5ST` 和 `api` 两个方法。）
+
+**本地复现/调试入口**:
+用 `JD_COOKIE` 塞一个假 cookie 即可跑到"cookie已失效"为止，用于验证依赖与流程:
+```bash
+JD_COOKIE='pt_key=fake;pt_pin=faketest;' ONEVAL=true node backup/jd_AutoEval/jd_AutoEval.js
+JD_COOKIE='pt_key=fake;pt_pin=faketest;' node jd/jd_OnceApply.js
+```
+要抓真实请求，可在 `require` 目标脚本前 hook `http.request`/`https.request` 记录 URL 与状态码；
+若脚本的异步逻辑在 `require` 返回后才跑（顶层未 await），进程可能提前退出，
+需用非 `unref` 的定时器兜底等待。
 
 **Git操作**:
 ```bash
