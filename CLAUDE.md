@@ -46,11 +46,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - 京东相关脚本统一放在 `jd/` 目录, 通过 `../sendNotify` / `sys.path` 引入根目录的推送模块
 
 6. **V2EX 每日签到** (`v2ex/main.py`)
+   - 版本: `v2.0.0` (2026-10-22), 启动首屏与推送末尾都会打印, 用于确认青龙上跑的哪一版
    - Cron: `15 8 * * *`
    - 环境变量: `v2ex` (JSON, accounts数组) 或 `V2EX_COOKIE`/`v2ex_cookie` (兼容, 换行或 `&` 分隔)
    - 可选 `V2EX_DEBUG=1`: 打印领取结果页/签到后页面摘要, 排查「签到未生效」用
    - **判定原则**: 只有回读 `/mission/daily` 确认「今日奖励已领取」才报成功。
      领取请求发出去但没确认到账一律报失败 —— 不允许谎报成功 (历史 bug: `success` 恒为 True)
+   - 入口只认完整路径 `/mission/daily/redeem?once=`, 并有 `fullmatch` 硬防护,
+     防止把页面里的 `/signout?once=` 当签到入口 (旧版事故根因)
 
 7. **什么值得买签到/任务** (`smzdm/`)
    - Cron: `10 8 * * *` (签到 `checkin.py`), `20 14 * * *` (任务 `task.py`)

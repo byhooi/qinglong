@@ -1,6 +1,8 @@
 """
 new Env('V2EX 每日签到');
 cron: 15 8 * * *
+version: v2.0.0
+updated: 2026-10-22
 """
 
 """
@@ -27,7 +29,14 @@ V2EX 每日签到脚本
 
 判定原则: 只有签到页回读确认「今日奖励已领取」，才算成功。
 领取请求发了但没确认到账，一律按失败上报 —— 宁可误报失败，也不要谎报成功。
+
+版本变更:
+  v2.0.0 (2026-10-22) 修复谎报成功与入口误匹配，见 v2ex/HANDOFF.md
+  v1.x                旧版，success 恒为 True 且会把 /signout 当签到入口
 """
+
+VERSION = "2.0.0"
+UPDATED = "2026-10-22"
 
 import json
 import os
@@ -599,6 +608,8 @@ def build_notification(results: list[AccountResult], start_time: datetime, end_t
 
     content_parts.append(f"\n账号数: {total_count}，成功: {success_count}，失败: {failed_count}")
     content_parts.append(f"耗时: {duration} 秒")
+    # 版本号放在推送里，方便确认青龙上跑的是哪一版
+    content_parts.append(f"脚本版本: v{VERSION} ({UPDATED})")
     return title, "\n\n".join(content_parts)
 
 
@@ -606,6 +617,7 @@ def main() -> None:
     start_time = datetime.now()
     print("=" * 50)
     print("V2EX 每日签到脚本")
+    print(f"版本: v{VERSION} ({UPDATED})")
     print(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
 
