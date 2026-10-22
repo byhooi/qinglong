@@ -46,7 +46,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - 京东相关脚本统一放在 `jd/` 目录, 通过 `../sendNotify` / `sys.path` 引入根目录的推送模块
 
 6. **V2EX 每日签到** (`v2ex/main.py`)
-   - 版本: `v2.0.0` (2026-10-22), 启动首屏与推送末尾都会打印, 用于确认青龙上跑的哪一版
+   - 版本: `v2.1.0` (build 2026-10-22.2), 启动首屏与推送末尾都会打印, 用于确认青龙上跑的哪一版
    - Cron: `15 8 * * *`
    - 环境变量: `v2ex` (JSON, accounts数组) 或 `V2EX_COOKIE`/`v2ex_cookie` (兼容, 换行或 `&` 分隔)
    - 可选 `V2EX_DEBUG=1`: 打印领取结果页/签到后页面摘要, 排查「签到未生效」用
