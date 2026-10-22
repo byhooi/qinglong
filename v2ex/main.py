@@ -21,6 +21,12 @@ V2EX 每日签到脚本
 
 2. 兼容: V2EX_COOKIE / v2ex_cookie
    多账号可用换行或 & 分隔 cookie。
+
+3. 调试: V2EX_DEBUG=1
+   打印签到相关页面的原文摘要，用于排查「签到未生效」的真实原因。
+
+判定原则: 只有签到页回读确认「今日奖励已领取」，才算成功。
+领取请求发了但没确认到账，一律按失败上报 —— 宁可误报失败，也不要谎报成功。
 """
 
 import json
@@ -31,9 +37,9 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from http.cookies import SimpleCookie
+from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from urllib.parse import urlparse
 
 import requests
 import urllib3
@@ -53,6 +59,7 @@ except Exception:
 
 BASE_URL = "https://www.v2ex.com"
 ENV_NAMES = ("v2ex", "V2EX_COOKIE", "v2ex_cookie")
+DEBUG = bool(os.getenv("V2EX_DEBUG"))
 DEFAULT_HEADERS = {
     # 与浏览器抓包一致 (Edge 155 / Win10)
     "User-Agent": (
@@ -65,14 +72,55 @@ DEFAULT_HEADERS = {
         "image/avif,image/webp,image/apng,*/*;q=0.8"
     ),
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    # 显式只声明 gzip/deflate，避免服务端返回 br 而容器缺少 brotli 导致乱码
+    # 显式只声明 gzip/deflate，避免服务端返回 br/zstd 而容器缺解码库导致乱码。
+    # 抓包里浏览器发的是 gzip, deflate, br, zstd，这里故意收窄。
     "Accept-Encoding": "gzip, deflate",
     "Upgrade-Insecure-Requests": "1",
+    # 补齐抓包里的 sec-ch-ua / Sec-Fetch-*，让请求更像一次真实的页面导航
+    "sec-ch-ua": '"Microsoft Edge";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1",
 }
 
-# 页面出现这些文案即认为今日签到已完成 (兼容新旧版页面)
-# 注意不能把「已连续登录」放进来: 未签到时该文案同样存在
-SIGNED_KEYWORDS = ("已领取", "已签到", "已经领取", "签到过", "今日登录奖励已发放")
+# ---- 页面判定关键词 ----
+# 只在「今日已领取」时出现的文案。宁可窄也不能宽:
+# 「已连续登录」未签到时同样存在，「已领取」这类半截文案容易撞到别的任务。
+CLAIMED_MARKERS = (
+    "每日登录奖励已领取",
+    "今日的登录奖励已领取",
+    "daily login reward has been claimed",
+)
+# 领取成功后 V2EX 会直接给出这句
+CLAIM_SUCCESS_MARKERS = (
+    "已成功领取每日登录奖励",
+    "每日登录奖励已领取",
+)
+# V2EX 偶发要求再点一次才真正入账
+RECLICK_MARKERS = ("请重新点击一次以领取每日登录奖励",)
+LOGIN_MARKERS = ("你要查看的页面需要先登录", "you need to sign in first")
+
+# once 值不一定是纯数字，按 [A-Za-z0-9_%.-] 收。
+# 必须带完整路径：真实页面里还有 /signout?once= 和 /settings/night/toggle?once=，
+# 用宽松的 once=\d+ 会抓到登出/夜间模式的 token。
+REDEEM_PATTERN = re.compile(r"/mission/daily/redeem\?once=[A-Za-z0-9_%.-]+")
+# 余额区真实结构 (HAR 确认):
+#   <div id="money"><a href="/balance" class="balance_area" style="">1 <img alt="G" /> 93 ...</a></div>
+# 类名挂在 <a> 上且没有 bigger；旧版是 <div class="balance_area bigger">，两种都收。
+BALANCE_AREA_PATTERN = re.compile(
+    r'class="[^"]*\bbalance_area\b[^"]*"[^>]*>(.*?)</(?:a|div)>',
+    re.S,
+)
+STREAK_PATTERN = re.compile(r"已连续登录\s*(\d+)\s*天")
+# 每日奖励文案: 「已成功领取每日登录奖励 8 铜币」/「20261022 的每日登录奖励 8 铜币」
+REWARD_PATTERNS = (
+    re.compile(r"已成功领取每日登录奖励\s*(\d+(?:\.\d+)?)\s*铜币"),
+    re.compile(r"每日登录奖励\s*(\d+(?:\.\d+)?)\s*铜币"),
+    re.compile(r"\d{8}\s*的每日登录奖励\s*(\d+(?:\.\d+)?)\s*铜币"),
+)
 
 
 @dataclass
@@ -93,6 +141,17 @@ class AccountResult:
     days: str = ""
 
 
+@dataclass
+class DailyState:
+    """每日任务页面的解析结果。"""
+
+    requires_login: bool
+    already_claimed: bool
+    redeem_path: str
+    streak_days: str
+    text: str
+
+
 def normalize_text(text: str) -> str:
     """压缩 HTML 文本里的空白字符，便于通知展示。"""
     return re.sub(r"\s+", " ", text).strip()
@@ -103,10 +162,28 @@ def strip_tags(html: str) -> str:
     return normalize_text(text)
 
 
+def excerpt(text: str, limit: int = 300) -> str:
+    """截取页面摘要用于日志排查，避免刷屏。"""
+    return normalize_text(text)[:limit]
+
+
 def parse_cookie(cookie_text: str) -> dict[str, str]:
-    parsed = SimpleCookie()
-    parsed.load(cookie_text)
-    return {key: value.value for key, value in parsed.items()}
+    """按 ; 手工拆分 cookie。
+
+    不用 SimpleCookie: 它会改写 / 丢弃含非法字符的值, 而 V2EX 的 A2 可能带
+    = % + 等字符, 一旦解析错位, 表现就是「登录态丢失」。
+    """
+    cookies: dict[str, str] = {}
+    for chunk in re.split(r"[;\r\n]+", cookie_text):
+        name, separator, value = chunk.strip().partition("=")
+        name = name.strip()
+        if not separator or not name:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        cookies[name] = value
+    return cookies
 
 
 def split_cookie_accounts(cookie_text: str) -> list[str]:
@@ -170,6 +247,68 @@ def load_accounts() -> list[Account]:
     return accounts
 
 
+class BalanceParser(HTMLParser):
+    """提取页面可见文本。"""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.text_parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        text = normalize_text(data)
+        if text:
+            self.text_parts.append(text)
+
+
+def parse_page(html: str) -> BalanceParser:
+    parser = BalanceParser()
+    try:
+        parser.feed(html)
+        parser.close()
+    except Exception:
+        # 页面残缺也不该让整个账号挂掉，退回正则版文本
+        parser.text_parts.append(strip_tags(html))
+    return parser
+
+
+def page_text(html: str) -> str:
+    return " ".join(parse_page(html).text_parts)
+
+
+def extract_reward(*texts: str) -> str:
+    """从领取页 / 余额页提取当日铜币奖励。"""
+    combined = " ".join(texts)
+    for pattern in REWARD_PATTERNS:
+        matched = pattern.search(combined)
+        if matched:
+            return f"{matched.group(1)} 铜币"
+    return ""
+
+
+def extract_balance(html: str) -> str:
+    """从 balance_area 解析 金/银/铜。
+
+    真实结构 (2026-10 抓包确认):
+        <div id="money"><a href="/balance" class="balance_area" style="">
+        1 <img ... alt="G" /> 93 <img ... alt="S" /> 84 <img ... alt="B" /></a></div>
+
+    注意余额区是 <a> 而不是 <div>，类名只有 balance_area、没有 bigger，
+    所以按「class 含 balance_area 的标签」取整段，再从里面按序取数字。
+    只认恰好 3 个数字：少一项时无法判断是哪一种币为 0，宁可不显示也不要标错。
+    """
+    matched = BALANCE_AREA_PATTERN.search(html)
+    if not matched:
+        return ""
+    # 先剥标签再取数字：img 的 height="16"、src 里的 @2x 都带数字，
+    # 直接对原始片段 findall 会把它们一起算进来
+    inner_text = strip_tags(matched.group(1))
+    numbers = [value for value in re.findall(r"\d+", inner_text) if len(value) <= 12]
+    if len(numbers) != 3:
+        return ""
+    golden, silver, bronze = numbers
+    return f"{golden} 金币，{silver} 银币，{bronze} 铜币"
+
+
 class V2EXClient:
     def __init__(self, account: Account):
         self.account = account
@@ -181,7 +320,7 @@ class V2EXClient:
 
         self.session.cookies.update(parse_cookie(account.cookie))
 
-    def request(self, method: str, path: str, check: bool = True, **kwargs: Any) -> requests.Response:
+    def request(self, method: str, path: str, check: bool = True, **kwargs) -> requests.Response:
         url = path if path.startswith("http") else f"{BASE_URL}{path}"
         response = self.session.request(method, url, timeout=20, verify=False, **kwargs)
         if check:
@@ -200,83 +339,33 @@ class V2EXClient:
                 return normalize_text(matched.group(1))
         return ""
 
-    def get_daily_url(self, html: str) -> str:
-        # 页面里是一条内联 onclick: location.href = '/mission/daily/redeem?once=xxx'
-        patterns = [
-            r"""(/mission/daily/redeem\?once=\d+)""",
-            r"location\.href\s*=\s*'([^']+)'",
-            r'location\.href\s*=\s*"([^"]+)"',
-        ]
-        for pattern in patterns:
-            matched = re.search(pattern, html)
-            if matched:
-                return matched.group(1)
-        return ""
-
-    def is_signed(self, html: str) -> bool:
-        """页面出现「已领取/已签到」等文案，说明今日奖励已到账。"""
+    def inspect_daily(self, html: str, url: str) -> DailyState:
+        """解析 /mission/daily: 是否需登录、是否已领取、领取入口、连续天数。"""
         text = strip_tags(html)
-        return any(keyword in text for keyword in SIGNED_KEYWORDS)
+        lowered = text.lower()
+        requires_login = urlparse(url).path.rstrip("/") == "/signin" or any(
+            marker in lowered for marker in LOGIN_MARKERS
+        )
+        already_claimed = any(marker in lowered for marker in CLAIMED_MARKERS)
 
-    def parse_balance(self, html: str) -> tuple[str, str]:
-        """从 /balance 解析(今日收益, 铜币余额)，解析不到返回空串。
+        matched = REDEEM_PATTERN.search(html)
+        redeem_path = matched.group(0).replace("&amp;", "&") if matched else ""
 
-        /balance 是登录后页面：未登录会 302 到 /signin?next=/balance。
-        V2EX 改版过几次表单结构，这里按「标签 -> 可见文案」逐级放宽。
-        """
-        text = strip_tags(html)
+        streak = STREAK_PATTERN.search(text)
+        return DailyState(
+            requires_login=requires_login,
+            already_claimed=already_claimed,
+            redeem_path=redeem_path,
+            streak_days=streak.group(1) if streak else "",
+            text=text,
+        )
 
-        balance = ""
-        for pattern in (
-            r"铜币余额[^0-9]{0,10}(\d+)",
-            r"当前铜币[^0-9]{0,10}(\d+)",
-            r"余额[^0-9]{0,10}(\d+)",
-        ):
-            matched = re.search(pattern, text)
-            if matched:
-                balance = matched.group(1)
-                break
-
-        if not balance:
-            # 旧版结构: <td class="d" style="text-align: right;">1234</td>
-            matched = re.search(
-                r'<td[^>]*class="[^"]*\bd\b[^"]*"[^>]*>\s*([\d.]+)\s*</td>',
-                html,
-            )
-            if matched:
-                balance = matched.group(1)
-
-        today = ""
-        matched = re.search(r"(?:今日|本日)[^0-9]{0,12}\+?\s*(\d+)", text)
-        if matched:
-            today = matched.group(1)
-
-        return today, balance
-
-    def parse_daily_summary(self, html: str) -> tuple[str, str]:
-        """从 /mission/daily 提取(今日奖励, 连续登录)，解析不到返回空串。"""
-        text = strip_tags(html)
-
-        today = ""
-        matched = re.search(r"(?:每日|今日)登录奖励[^。；]{0,20}?(\d+)\s*个?\s*铜币", text)
-        if matched:
-            today = f"{matched.group(1)} 铜币"
-
-        days = ""
-        matched = re.search(r"(?:已连续登录|连续登录)\s*(\d+)\s*天", text)
-        if matched:
-            days = f"已连续登录 {matched.group(1)} 天"
-        elif "已连续登录" in text:
-            days = "已连续登录"
-
-        return today, days
+    def get_daily_state(self) -> tuple[DailyState, str]:
+        response = self.request("GET", "/mission/daily", allow_redirects=True)
+        return self.inspect_daily(response.text, response.url), response.text
 
     def get_balance(self) -> tuple[str, str]:
-        """拉取 /balance 页面拿到(今日收益, 铜币余额)。
-
-        /balance 未登录会 302 到 /signin，所以它同时也是登录态的第二道校验。
-        这里失败不抛异常：签到结果不以余额解析为准。
-        """
+        """拉取 /balance 页面拿到(今日收益, 余额)。失败不影响签到结果。"""
         try:
             response = self.request("GET", "/balance", allow_redirects=True)
         except requests.RequestException as exc:
@@ -285,14 +374,64 @@ class V2EXClient:
         if "/signin" in response.url:
             print("获取余额被重定向到登录页")
             return "", ""
-        return self.parse_balance(response.text)
+        return extract_reward(page_text(response.text)), extract_balance(response.text)
+
+    def redeem(self, redeem_path: str) -> tuple[int, str, str]:
+        """发起领取，返回 (状态码, 最终 URL, 结果页文本)。
+
+        跟随跳转: V2EX 领取成功会 302 到 /mission/daily，结果页里就是
+        「每日登录奖励已领取」，比只看状态码可靠。
+        被踢回登录页时最终 URL 会落到 /signin。
+        """
+        # 硬防护: 只允许打签到入口。历史 bug 曾把页面里的
+        # location.href='/signout?once=...' 当成签到链接，等于每次任务都在登出账号。
+        if not REDEEM_PATTERN.fullmatch(redeem_path):
+            print(f"拒绝请求非签到入口的 URL: {redeem_path}")
+            return 0, "", ""
+
+        response = self.request(
+            "GET",
+            redeem_path,
+            allow_redirects=True,
+            check=False,
+            headers={"Referer": f"{BASE_URL}/mission/daily"},
+        )
+        return response.status_code, response.url, strip_tags(response.text)
+
+    def build_success_result(
+        self,
+        message: str,
+        username: str,
+        daily_html: str,
+        claim_texts: tuple[str, ...] = (),
+        streak_days: str = "",
+    ) -> AccountResult:
+        """汇总成功结果。
+
+        daily 页本身就带余额区（HAR 确认 id="money" 里的 balance_area），
+        优先就地解析；解析不到再去 /balance 补一次，避免白跑请求。
+        """
+        daily_text = page_text(daily_html)
+        today = extract_reward(*claim_texts, daily_text)
+        balance = extract_balance(daily_html)
+        if not balance:
+            today_from_balance, balance = self.get_balance()
+            today = today or today_from_balance
+        return AccountResult(
+            account_name=self.account.account_name,
+            success=True,
+            message=message,
+            username=username or self.account.account_name,
+            today=today,
+            balance=balance,
+            days=f"已连续登录 {streak_days} 天" if streak_days else "",
+        )
 
     def sign(self) -> AccountResult:
-        daily_response = self.request("GET", "/mission/daily", allow_redirects=True)
-        daily_html = daily_response.text
+        state, daily_html = self.get_daily_state()
 
-        # 未登录会被重定向到 /signin?next=...，比匹配页面里的「登录」字样可靠
-        if "/signin" in daily_response.url:
+        # 未登录会被重定向到 /signin?next=...
+        if state.requires_login:
             return AccountResult(
                 account_name=self.account.account_name,
                 success=False,
@@ -300,21 +439,17 @@ class V2EXClient:
             )
 
         username = self.get_username(daily_html)
-        daily_url = self.get_daily_url(daily_html)
 
-        if not daily_url:
-            if self.is_signed(daily_html):
-                today, days = self.parse_daily_summary(daily_html)
-                _, balance = self.get_balance()
-                return AccountResult(
-                    account_name=self.account.account_name,
-                    success=True,
-                    message="今日已签到",
-                    username=username or self.account.account_name,
-                    today=today,
-                    balance=balance,
-                    days=days,
-                )
+        if state.already_claimed:
+            print("页面显示今日奖励已领取，无需重复领取")
+            return self.build_success_result(
+                "今日已签到",
+                username,
+                daily_html,
+                streak_days=state.streak_days,
+            )
+
+        if not state.redeem_path:
             return AccountResult(
                 account_name=self.account.account_name,
                 success=False,
@@ -322,47 +457,87 @@ class V2EXClient:
                 username=username or self.account.account_name,
             )
 
-        # 抓包显示 redeem 正常返回 302 -> /mission/daily，因此不跟随跳转、也不要求 200
-        redeem_response = self.request(
-            "GET",
-            daily_url,
-            allow_redirects=False,
-            check=False,
-            headers={"Referer": f"{BASE_URL}/mission/daily"},
-        )
-        location = redeem_response.headers.get("location", "")
-        if "/signin" in location:
+        print(f"发现签到入口: {state.redeem_path}")
+
+        # V2EX 偶尔要求「再点一次」才真正入账，最多补一次
+        claim_texts: list[str] = []
+        redeem_path = state.redeem_path
+        for attempt in range(1, 3):
+            status_code, final_url, claim_text = self.redeem(redeem_path)
+            print(f"第 {attempt} 次领取: HTTP {status_code}，落到 {final_url}")
+            if DEBUG:
+                print(f"领取结果页摘要: {excerpt(claim_text)}")
+
+            if status_code == 0:
+                # redeem() 的硬防护拦截了非签到入口 URL
+                return AccountResult(
+                    account_name=self.account.account_name,
+                    success=False,
+                    message="签到入口校验未通过，已阻止请求，请反馈此问题",
+                    username=username or self.account.account_name,
+                )
+            if "/signin" in urlparse(final_url).path:
+                return AccountResult(
+                    account_name=self.account.account_name,
+                    success=False,
+                    message="签到被重定向到登录页，Cookie 可能已失效",
+                )
+            if status_code >= 400:
+                return AccountResult(
+                    account_name=self.account.account_name,
+                    success=False,
+                    message=f"签到请求失败，HTTP {status_code}",
+                    username=username or self.account.account_name,
+                )
+
+            claim_texts.append(claim_text)
+            if not any(marker in claim_text for marker in RECLICK_MARKERS):
+                break
+            if attempt == 2:
+                # 已经补过一次仍要求重试，不再重复发请求，交给下面的回读判定
+                print("补领取后站点仍要求重新点击，停止重试")
+                break
+
+            print("站点要求重新点击一次，刷新页面后重试")
+            refreshed, _ = self.get_daily_state()
+            if refreshed.already_claimed or not refreshed.redeem_path:
+                break
+            redeem_path = refreshed.redeem_path
+
+        # 回读签到页确认是否真的到账
+        verify_state, verify_html = self.get_daily_state()
+        confirmed = any(
+            marker in text for text in claim_texts for marker in CLAIM_SUCCESS_MARKERS
+        ) or verify_state.already_claimed
+
+        if verify_state.requires_login:
             return AccountResult(
                 account_name=self.account.account_name,
                 success=False,
-                message="签到被重定向到登录页，Cookie 可能已失效",
+                message="签到后登录态失效，请重新抓取 V2EX Cookie",
             )
-        if redeem_response.status_code >= 400:
+
+        if not confirmed:
+            # 这条分支就是「页面报成功、网站没签到」的真正原因：不谎报
+            reason = "页面仍显示可以领取" if verify_state.redeem_path else "页面未出现已领取文案"
+            advice = "领取未生效" if verify_state.redeem_path else "无法确认领取状态"
+            print(f"签到未确认：{reason}")
+            if DEBUG:
+                print(f"签到后页面摘要: {excerpt(verify_state.text)}")
             return AccountResult(
                 account_name=self.account.account_name,
                 success=False,
-                message=f"签到请求失败，HTTP {redeem_response.status_code}",
+                message=f"{advice}（{reason}），请手动核对或稍后重试",
                 username=username or self.account.account_name,
             )
 
-        # 回读签到页确认是否真的到账
-        verify_response = self.request("GET", "/mission/daily", allow_redirects=True)
-        verify_html = verify_response.text
-        verified = self.is_signed(verify_html) and not self.get_daily_url(verify_html)
-        message = "签到成功" if verified else "签到请求已提交，但未能确认到账，请手动核对"
-
-        today, days = self.parse_daily_summary(verify_html)
-        today_from_balance, balance = self.get_balance()
-        today = today or today_from_balance
-
-        return AccountResult(
-            account_name=self.account.account_name,
-            success=True,
-            message=message,
-            username=username or self.get_username(verify_html) or self.account.account_name,
-            today=today,
-            balance=balance,
-            days=days,
+        print("已确认今日奖励到账")
+        return self.build_success_result(
+            "签到成功",
+            username,
+            verify_html,
+            claim_texts=tuple(claim_texts),
+            streak_days=verify_state.streak_days,
         )
 
 

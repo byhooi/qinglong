@@ -48,6 +48,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 6. **V2EX 每日签到** (`v2ex/main.py`)
    - Cron: `15 8 * * *`
    - 环境变量: `v2ex` (JSON, accounts数组) 或 `V2EX_COOKIE`/`v2ex_cookie` (兼容, 换行或 `&` 分隔)
+   - 可选 `V2EX_DEBUG=1`: 打印领取结果页/签到后页面摘要, 排查「签到未生效」用
+   - **判定原则**: 只有回读 `/mission/daily` 确认「今日奖励已领取」才报成功。
+     领取请求发出去但没确认到账一律报失败 —— 不允许谎报成功 (历史 bug: `success` 恒为 True)
 
 7. **什么值得买签到/任务** (`smzdm/`)
    - Cron: `10 8 * * *` (签到 `checkin.py`), `20 14 * * *` (任务 `task.py`)
