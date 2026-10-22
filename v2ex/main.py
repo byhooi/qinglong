@@ -68,7 +68,18 @@ except Exception:
 
 BASE_URL = "https://www.v2ex.com"
 ENV_NAMES = ("v2ex", "V2EX_COOKIE", "v2ex_cookie")
-DEBUG = bool(os.getenv("V2EX_DEBUG"))
+
+
+def env_flag(name: str) -> bool:
+    """解析环境变量开关。
+
+    注意不能用 bool(os.getenv(...)): 字符串 "0" / "false" / "no" 在 Python 里
+    都是真值, 那样设成 0 反而关不掉, 只能靠删变量。
+    """
+    return os.getenv(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+DEBUG = env_flag("V2EX_DEBUG")
 DEFAULT_HEADERS = {
     # 与浏览器抓包一致 (Edge 155 / Win10)
     "User-Agent": (
@@ -618,6 +629,7 @@ def main() -> None:
     print("=" * 50)
     print("V2EX 每日签到脚本")
     print(f"版本: v{VERSION} ({UPDATED})")
+    print(f"调试模式: {'开启' if DEBUG else '关闭'}")
     print(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
 
