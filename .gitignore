@@ -31,6 +31,10 @@ logs/
 # Claude
 CLAUDE.local.md
 
+# 本地工作笔记 (Handoff / 交接文档)，不纳入版本控制
+HANDOFF.md
+**/HANDOFF.md
+
 # IDE
 .vscode/
 .idea/
