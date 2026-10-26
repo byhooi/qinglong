@@ -48,3 +48,6 @@ HANDOFF.md
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# DSH 沙箱权限诊断产物 (含 DACL 备份与报告，与代码无关)
+.acl-recovery/
