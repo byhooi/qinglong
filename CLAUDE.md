@@ -19,6 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 主要脚本
 
 1. **一点万象签到** (`ydwx.py`)
+   - 版本: `v3.0.1` (build 2026-10-28.1), 启动首屏与推送末尾都会打印
    - Cron: `2 8 * * *`
    - 环境变量: `ydwx_deviceParams`, `ydwx_token` (多账号用 `&` 分隔)
    - **当前为旧版 3.x 协议 + MD5 签名，青龙实测可用**。2026-10-26 曾报 405 被误判为
@@ -28,11 +29,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
      尚未用真实 token 验证过签到成功，不投产。若日后要启用，先做真实签到对照再替换。
 
 2. **华润通微信版签到** (`huaruntong/huaruntong_wx/`)
+   - 版本: `v1.1.0` (build 2026-10-28.1), 启动首屏与推送末尾都会打印
    - Cron: `20 8 * * *`
    - 环境变量: `hrt_wx` (JSON格式，accounts数组支持多账号)
    - 文件结构: `api.py` (API封装) + `main.py` (签到主逻辑)
 
 3. **华润通文体未来荟签到** (`huaruntong/wentiweilaihui/`)
+   - 版本: `v1.1.0` (build 2026-10-28.1), 启动首屏与推送末尾都会打印
    - Cron: `10 8 * * *`
    - 环境变量: `wentiweilaihui` (JSON格式，accounts数组支持多账号)
    - 文件结构: `api.py` (API封装) + `main.py` (签到主逻辑)

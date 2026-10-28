@@ -9,6 +9,10 @@ cron: 10 8 * * *
 格式示例: {"accounts":[{"account_name":"账号1","token":"xxx","mobile":"138xxx"},{"account_name":"账号2","token":"yyy","mobile":"139xxx"}]}
 多账号在 accounts 数组中添加即可
 """
+# 脚本版本号: 启动首屏与推送末尾都会打印, 用于确认青龙上跑的哪一版
+VERSION = "1.1.0"
+BUILD = "2026-10-28.1"
+
 import json
 import os
 import sys
@@ -101,6 +105,11 @@ def process_account(account_config):
     return result_info
 
 
+def version_label():
+    """统一版本串，日志与推送共用，避免两处写法漂移。"""
+    return f"v{VERSION} (build {BUILD})"
+
+
 def build_notification(all_results, start_time, end_time):
     """构建推送通知内容"""
     duration = (end_time - start_time).total_seconds()
@@ -133,6 +142,8 @@ def build_notification(all_results, start_time, end_time):
             content_parts.append(f"❌ [{account_name}] {error}")
 
     content_parts.append(f"\n⏱️ 耗时: {int(duration)}秒")
+    # 版本号放在推送里，方便确认青龙上跑的是哪一版
+    content_parts.append(f"🏷️ 脚本版本: {version_label()}")
 
     return title, "\n".join(content_parts)
 
@@ -143,6 +154,7 @@ def main():
     start_time = datetime.now()
     print("=" * 50)
     print("文体未来荟签到脚本")
+    print(f"版本: {version_label()}")
     print(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
     print()

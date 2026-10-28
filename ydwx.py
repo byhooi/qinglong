@@ -10,6 +10,11 @@
 # 2026-10-26 回退说明: 本文件已恢复为旧版(3.x 协议 + MD5 签名)。
 # 新版(4.2.10 协议, 带 WAF 预热与 405 重试)已归档到 ydwx_4.2.10.py,
 # 原因: 青龙实测旧版可正常签到, 「协议变更导致失效」的结论不成立, 详见 HANDOFF.md 末尾更正。
+
+# 脚本版本号: 启动首屏与推送末尾都会打印, 用于确认青龙上跑的哪一版
+VERSION = "3.0.1"
+BUILD = "2026-10-28.1"
+
 import hashlib
 import json
 import os
@@ -132,13 +137,21 @@ def sign_in(account):
     return result_info
 
 
+def version_label():
+    """统一版本串，日志与推送共用，避免两处写法漂移。"""
+    return f"v{VERSION} (build {BUILD})"
+
+
 def build_notification(results):
     total_count = len(results)
     success_count = sum(1 for item in results if item.get("success"))
     failed_count = total_count - success_count
 
     if total_count == 0:
-        return "一点万象签到失败 ❌", "未获取到 ydwx_deviceParams 或 ydwx_token 环境变量"
+        return "一点万象签到失败 ❌", (
+            "未获取到 ydwx_deviceParams 或 ydwx_token 环境变量"
+            f"\n\n脚本版本: {version_label()}"
+        )
     if failed_count == 0:
         title = "一点万象签到成功 ✅"
     elif success_count == 0:
@@ -158,10 +171,18 @@ def build_notification(results):
                 error = error[:50] + "..."
             content_parts.append(f"❌ [{account_name}] {error}")
 
+    # 版本号放在推送里，方便确认青龙上跑的是哪一版
+    content_parts.append(f"\n脚本版本: {version_label()}")
+
     return title, "\n".join(content_parts)
 
 
 def main():
+    print("=" * 50)
+    print("一点万象签到脚本")
+    print(f"版本: {version_label()}")
+    print("=" * 50)
+
     accounts = load_accounts()
     print(f"共配置了{len(accounts)}个账号")
 
