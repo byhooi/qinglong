@@ -1,28 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-签到重放入口
+签到重放入口（手动调试用）
 
-⚠️ 青龙任务的「命令」字段必须带站点名，只写 python3 checkin/main.py 会报错退出。
+青龙上的任务不用这个文件——青龙拉库时会读取 checkin/task_*.py 头部的
+name: 与 cron: 声明，自动注册 10 条任务。本文件没有 cron 声明，不会被注册。
 
-青龙任务名与命令
-    每个站点单独建一条任务，互不影响：
-        python3 checkin/main.py mylink      定时 30 8 * * *
-        python3 checkin/main.py sdl         定时 30 8 * * *
-        python3 checkin/main.py honda       定时 30 8 * * *
-        python3 checkin/main.py ninebot     定时 30 0 * * *
-        python3 checkin/main.py zyh         定时 4 8 * * *
-        python3 checkin/main.py miniso      定时 30 8 * * *
-        python3 checkin/main.py jtc         定时 6 8 * * *
-        python3 checkin/main.py syed        定时 8 8 * * *
-        python3 checkin/main.py blug        定时 30 8 * * *
-        python3 checkin/main.py mixpark     定时 2 8 * * *
-
-    也可以只建一条任务跑全部：python3 checkin/main.py all
+什么时候用这个
+    手动补跑某天、排查单个站点、或一次跑完全部。
 
 用法
-    python main.py <站点>    跑单个站点
+    python main.py <站点>    跑单个站点，如 python main.py mylink
     python main.py all       跑全部启用站点
     python main.py --list    列出站点、环境变量与建议定时
+
+⚠️ 命令必须带站点名，只写 python3 checkin/main.py 会报错并以退出码 2 结束。
 
 退出码
     0 全部成功或无需执行；1 存在失败账号（青龙会标红，便于发现 token 过期）
