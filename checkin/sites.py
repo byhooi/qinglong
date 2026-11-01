@@ -103,7 +103,7 @@ SITES: dict[str, SiteConfig] = {
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
         message_path="msg",
-        cron="30 0 * * *",
+        cron="30 8 * * *",
     ),
     "zyh": SiteConfig(
         key="zyh",

@@ -1,7 +1,7 @@
 """
 九号电动签到
 name: 九号电动签到
-cron: 30 0 * * *
+cron: 30 8 * * *
 """
 
 import sys
