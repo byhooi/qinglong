@@ -37,10 +37,18 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# 通知模块位于仓库根目录，青龙上脚本可能被放在任意子目录，这里按相对位置兜底
-_ROOT = Path(__file__).resolve().parent.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+# sendNotify.py 的位置随青龙的拉库方式而变：
+#   本地开发  -> 仓库根/checkin/replay.py，通知在 仓库根/sendNotify.py（上 1 级）
+#   青龙拉库  -> /ql/scripts/byhooi_qinglong/checkin/replay.py，通知在 /ql/scripts/sendNotify.py（上 3 级）
+# 所以不写死层级，从当前文件逐级向上找，找到为止。
+_NOTIFY_DIR = Path(__file__).resolve().parent
+for _ in range(4):
+    if (_NOTIFY_DIR / "sendNotify.py").exists():
+        break
+    _NOTIFY_DIR = _NOTIFY_DIR.parent
+
+if str(_NOTIFY_DIR) not in sys.path:
+    sys.path.insert(0, str(_NOTIFY_DIR))
 
 try:
     from sendNotify import send as _notify
