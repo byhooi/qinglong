@@ -46,6 +46,25 @@ function readStore() {
     }
 }
 
+/**
+ * akino 的存储是「字符串套字符串」：
+ *   setjson → JSON.stringify(userCookie)
+ *   setdata → lodash_set(obj, 'record.<ck>', 上面的字符串) → JSON.stringify(obj)
+ * 所以 record[ck] 是 JSON 字符串，必须再解一次；直接 stringify 会二次转义。
+ */
+function decodeRecord(value) {
+    let data = value;
+    for (let i = 0; i < 2 && typeof data === 'string'; i++) {
+        try {
+            data = JSON.parse(data);
+        } catch (e) {
+            break;
+        }
+    }
+    if (data === null || data === undefined || data === '') return [];
+    return Array.isArray(data) ? data : [data];
+}
+
 function finish(lines, summary) {
     const text = lines.join("\n");
 
@@ -87,16 +106,14 @@ function finish(lines, summary) {
     let found = 0;
 
     for (const ck of CK_NAMES) {
-        const data = records[ck];
+        const list = decodeRecord(records[ck]);
 
-        if (!data || (Array.isArray(data) && data.length === 0)) {
+        if (list.length === 0) {
             summary.push(`[缺失] ${ck}`);
             continue;
         }
 
-        const list = Array.isArray(data) ? data : [data];
         const json = JSON.stringify(list);
-
         if (!json || json === "[]") {
             summary.push(`[缺失] ${ck}`);
             continue;
