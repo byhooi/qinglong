@@ -142,7 +142,8 @@ class SiteConfig:
     success_codes: set | None = None
     success_keywords: tuple[str, ...] = ()
     fail_keywords: tuple[str, ...] = ()
-    message_path: str = ""  # 如 "header.resultMsg"，留空则自动递归查找
+    message_path: str = ""  # 消息文本路径，如 "header.resultMsg"，留空则自动递归查找
+    success_path: str = ""  # 布尔成功标志路径，如 "success"，取到值则优先按真假判定
     cron: str = ""
     note: str = ""
     enabled: bool = True
@@ -334,7 +335,11 @@ def find_field(payload: Any, keys: tuple[str, ...], depth: int = 0) -> Any:
 
 
 def get_by_path(payload: Any, path: str) -> Any:
-    """按 a.b.c 形式取嵌套值，支持列表下标（如 data.items.0.msg）"""
+    """按 a.b.c 形式取嵌套值，支持列表下标（如 data.items.0.msg）
+
+    键名先精确匹配，找不到再忽略大小写匹配一次——
+    不同接口的字段大小写不统一（如 d.Msg），配错一个字母就取不到值。
+    """
     current = payload
     for part in path.split("."):
         if isinstance(current, list):
@@ -343,9 +348,17 @@ def get_by_path(payload: Any, path: str) -> Any:
             except (ValueError, IndexError):
                 return None
         elif isinstance(current, dict):
-            if part not in current:
+            if part in current:
+                current = current[part]
+                continue
+            lowered = part.lower()
+            matched = next(
+                (key for key in current if isinstance(key, str) and key.lower() == lowered),
+                None,
+            )
+            if matched is None:
                 return None
-            current = current[part]
+            current = current[matched]
         else:
             return None
     return current
@@ -363,6 +376,13 @@ def judge_result(status_code: int, payload: Any, text: str, site: SiteConfig) ->
 
     if status_code >= 400:
         return False, f"HTTP {status_code} {message}".strip()
+
+    # 布尔成功标志优先：有些接口只返回 success: true/false，没有文本消息
+    if site.success_path:
+        flag = get_by_path(payload, site.success_path)
+        if flag is not None:
+            passed = flag is True or str(flag).strip().lower() in ("true", "1", "ok", "yes")
+            return passed, message or f"{site.success_path}={flag}"
 
     haystack = f"{message} {text}"
     for keyword in site.fail_keywords:

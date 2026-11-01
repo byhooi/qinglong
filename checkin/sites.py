@@ -12,6 +12,11 @@
     CHECKIN_MINISO / CHECKIN_JTC / CHECKIN_SYED / CHECKIN_BLUG / CHECKIN_MIXPARK
 
 值为 akino 抓包产出的 JSON 数组，格式见 replay.py 顶部说明。
+
+message_path / success_path 对应 Surge 模块里的 path 参数（如 res.msg 写作 "msg"）：
+    message_path  取消息文本，用于展示和关键字判定
+    success_path  取布尔成功标志，取到值就优先按真假判定（捷停车是这种）
+两者都不配时，退回递归查找常见消息字段。
 """
 
 from __future__ import annotations
@@ -54,8 +59,7 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
-        # 响应结构固定为 {body:{}, header:{resultCode, resultMsg}}，
-        # 消息只在 header 下，精确取比递归猜可靠
+        # 响应结构为 {body:{}, header:{resultCode, resultMsg}}，消息只在 header 下
         message_path="header.resultMsg",
         cron="30 8 * * *",
     ),
@@ -67,6 +71,7 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        message_path="msg",
         cron="30 8 * * *",
     ),
     "honda": SiteConfig(
@@ -80,6 +85,7 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        message_path="msg",
         cron="30 8 * * *",
         note="接口是适配层入口，可能依赖 body 中的 action 字段，重放时必须原样带上 body",
     ),
@@ -91,6 +97,7 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        message_path="msg",
         cron="30 0 * * *",
     ),
     "zyh": SiteConfig(
@@ -101,6 +108,8 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        # 注意是大写 Msg，get_by_path 会先精确匹配、失败再忽略大小写兜底
+        message_path="d.Msg",
         cron="4 8 * * *",
     ),
     "miniso": SiteConfig(
@@ -114,6 +123,7 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        message_path="message",
         cron="30 8 * * *",
         note="抓的是「领取奖励」接口，前置的签到动作若单独存在需另行补抓",
     ),
@@ -125,6 +135,9 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        # 该接口返回的是 success: true/false 布尔值，不是文本消息，
+        # 所以走 success_path 按真假判定；消息仍由递归查找兜底
+        success_path="success",
         cron="6 8 * * *",
     ),
     "syed": SiteConfig(
@@ -135,6 +148,7 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        message_path="msg",
         cron="8 8 * * *",
         note="与 shenye/ 下的旧脚本等效，兼容其 SHENYE_COOKIE 变量名",
     ),
@@ -149,6 +163,7 @@ SITES: dict[str, SiteConfig] = {
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         # 不能放裸 "sign"：响应里通常带 sign 字段，会误判成失败
         fail_keywords=COMMON_FAIL_KEYWORDS + ("签名错误", "签名失效", "签名校验失败"),
+        message_path="msg",
         cron="30 8 * * *",
         note="高风险：URL 带 timeStamp+sign 签名参数，重放很可能被服务端拒绝，需实测",
     ),
@@ -160,6 +175,7 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        message_path="message",
         cron="2 8 * * *",
     ),
 }
