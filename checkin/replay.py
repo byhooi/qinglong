@@ -30,7 +30,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import requests
 import urllib3
@@ -148,6 +148,9 @@ class SiteConfig:
     fail_keywords: tuple[str, ...] = ()
     message_path: str = ""  # 消息文本路径，如 "header.resultMsg"，留空则自动递归查找
     success_path: str = ""  # 布尔成功标志路径，如 "success"，取到值则优先按真假判定
+    # 有些站点的请求不能照搬抓包结果（URL 带动态时间戳、headers 固定），
+    # 环境变量只存 token，由 builder 在发送前用 token 现构造请求
+    builder: Callable[[str], dict[str, Any]] | None = None
     cron: str = ""
     note: str = ""
     enabled: bool = True
@@ -415,6 +418,21 @@ def judge_result(status_code: int, payload: Any, text: str, site: SiteConfig) ->
 
 def replay(account: Account, site: SiteConfig) -> AccountResult:
     """执行一次重放"""
+    # 需要现构造请求的站点：环境变量存的是 token，URL/headers 在发送前生成
+    if site.builder:
+        token = (account.cookie or "").strip()
+        if not token:
+            return AccountResult(False, "缺少 token")
+        try:
+            built = site.builder(token)
+        except Exception as exc:
+            return AccountResult(False, f"构造请求失败: {shorten(exc)}")
+        account.url = built.get("url", account.url)
+        account.method = (built.get("method") or account.method).upper()
+        account.headers = {**(built.get("headers") or {}), **account.headers}
+        account.cookie = built.get("cookie", account.cookie)
+        account.body = built.get("body", "")
+
     if not (account.url or site.default_url):
         return AccountResult(False, "缺少签到地址")
 

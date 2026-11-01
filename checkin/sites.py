@@ -21,6 +21,8 @@ message_path / success_path 对应 Surge 模块里的 path 参数（如 res.msg 
 
 from __future__ import annotations
 
+import time
+
 from replay import SiteConfig
 
 # 通用成功/失败关键字，各站点可覆盖。
@@ -53,6 +55,33 @@ COMMON_FAIL_KEYWORDS = (
     "未登录",
     "用户不存在",
 )
+
+
+def build_huazhu(token: str) -> dict:
+    """华住会：URL 带秒级时间戳，headers 固定，token 放 Cookie。
+
+    对应 huazhu_sign.js 的 signIn()，参数和 UA 必须与小程序一致，
+    否则服务端会认为是非法客户端。
+    """
+    return {
+        "url": f"https://appgw.huazhu.com/game/sign_in?date={int(time.time())}",
+        "method": "GET",
+        "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "zh-CN,zh-Hans;q=0.9",
+            "Client-Platform": "WX-MP",
+            "Origin": "https://cdn.huazhu.com",
+            "Referer": "https://cdn.huazhu.com/",
+            "User-Agent": (
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 26_5_2 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 "
+                "MicroMessenger/8.0.75(0x18004b46) NetType/WIFI Language/zh_CN "
+                "miniProgram/wx286efc12868f2559"
+            ),
+        },
+        "cookie": f"userToken={token}",
+        "body": "",
+    }
 
 
 SITES: dict[str, SiteConfig] = {
@@ -195,6 +224,20 @@ SITES: dict[str, SiteConfig] = {
         fail_keywords=(),
         cron="15 8 * * *",
         note="请求体含加密随机数与签名，抓到的数据可能只能用一次，失败需重新抓包",
+    ),
+    "huazhu": SiteConfig(
+        key="huazhu",
+        name="华住会签到",
+        env_names=("CHECKIN_HUAZHU",),
+        default_url="https://appgw.huazhu.com/game/sign_in",
+        default_method="GET",
+        success_codes={200},
+        success_keywords=(),
+        fail_keywords=(),
+        message_path="message",
+        builder=build_huazhu,
+        cron="10 8 * * *",
+        note="环境变量存 userToken 原文，请求由 builder 现构造（URL 带动态时间戳）",
     ),
 }
 

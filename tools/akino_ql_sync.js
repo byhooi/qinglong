@@ -48,7 +48,10 @@ const CK_NAMES = [
 // 非 akino 架构的脚本，数据存在各自的 key 里，读不到 akino 存储，
 // 需要单独从对应 key 导入。新增这类站点时在这里加一条。
 const IMPORT_SOURCES = [
+  // raw: true 表示存储的是纯文本凭证（如 userToken），原样写入青龙，
+  // 由青龙端的 builder 用 token 现构造请求；否则按 JSON 解析成请求数组。
   { key: 'byhooi_1hai_sign_request', env: 'CHECKIN_1HAI', note: '一嗨租车' },
+  { key: 'byhooi_huazhu_token', env: 'CHECKIN_HUAZHU', note: '华住会', raw: true },
 ];
 
 const QL_API = {
@@ -295,15 +298,67 @@ async function handleCapture() {
     }
   }
 
+  // 有些站点的青龙端只需要一个 token（如华住会的 userToken），不需要完整请求。
+  // tokenPath 指定从请求的哪里取，格式 cookie:userToken / header:X-Token / query:token
+  const tokenPath = (args.tokenPath || '').trim();
+  const envName = `${ENV_PREFIX}${ckName.toUpperCase()}`;
+  const accountIndex = parseInt(args.accountIndex || '0', 10) || 0;
+
+  if (tokenPath) {
+    const sep = tokenPath.indexOf(':');
+    const source = sep > 0 ? tokenPath.slice(0, sep).toLowerCase() : 'cookie';
+    const key = sep > 0 ? tokenPath.slice(sep + 1) : tokenPath;
+    const headers = $request.headers || {};
+    let token = '';
+
+    if (source === 'cookie') {
+      const cookieText = headers.Cookie || headers.cookie || '';
+      const matched = cookieText.match(new RegExp('(?:^|;\\s*)' + key + '=([^;]+)'));
+      token = matched ? matched[1] : '';
+    } else if (source === 'header') {
+      token = headers[key] || headers[key.toLowerCase()] || '';
+    } else if (source === 'query') {
+      const matched = $request.url.match(new RegExp('[?&]' + key + '=([^&]+)'));
+      token = matched ? decodeURIComponent(matched[1]) : '';
+    }
+
+    if (!token) {
+      log(`${ckName}: 未从请求中取到 ${tokenPath}，跳过`);
+      return;
+    }
+
+    // 华住会这类站点每次请求都带 token，全部同步会频繁调青龙 API。
+    // 本地记一份上次的值，相同就直接跳过，不碰网络。
+    const cacheKey = `akino_last_token_${ckName}`;
+    if ($persistentStore.read(cacheKey) === token) {
+      return;
+    }
+
+    const client = new QLPanel();
+    client.checkConfig();
+    const current = await client.getEnvs(envName);
+    const remarks = `${ckName} - Surge 抓包同步`;
+
+    if (current.length === 0) {
+      await client.addEnv(envName, token, remarks);
+      log(`${ckName}: 新增 ${envName}（token）`);
+    } else if (current[0].value === token) {
+      log(`${ckName}: token 未变化，跳过`);
+    } else {
+      await client.updateEnv(current[0], envName, token, remarks);
+      log(`${ckName}: 已更新 ${envName}（token）`);
+    }
+
+    $persistentStore.write(token, cacheKey);
+    return;
+  }
+
   const item = {
     url: $request.url,
     method: ($request.method || 'GET').toLowerCase(),
     headers: $request.headers || {},
     body: $request.body || '',
   };
-
-  const accountIndex = parseInt(args.accountIndex || '0', 10) || 0;
-  const envName = `${ENV_PREFIX}${ckName.toUpperCase()}`;
 
   const ql = new QLPanel();
   ql.checkConfig();
@@ -426,43 +481,57 @@ async function main() {
         continue;
       }
 
-      let parsed;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (e) {
-        log(`${src.note}: 存储不是合法 JSON，跳过`);
-        continue;
+      let value;
+      let detail = '';
+
+      if (src.raw) {
+        // 纯文本凭证，原样写入
+        value = String(raw).trim();
+        if (!value) {
+          log(`${src.note}: 数据为空，跳过`);
+          continue;
+        }
+        detail = 'token';
+      } else {
+        let parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (e) {
+          log(`${src.note}: 存储不是合法 JSON，跳过`);
+          continue;
+        }
+
+        const list = (Array.isArray(parsed) ? parsed : [parsed])
+          .filter((item) => item && item.url)
+          .map((item) => ({
+            url: item.url,
+            method: (item.method || 'POST').toLowerCase(),
+            headers: item.headers || {},
+            body: typeof item.body === 'string' ? item.body : '',
+          }));
+
+        if (list.length === 0) {
+          log(`${src.note}: 没有可用数据，跳过`);
+          continue;
+        }
+        value = JSON.stringify(list);
+        detail = `${list.length} 条`;
       }
 
-      const list = (Array.isArray(parsed) ? parsed : [parsed])
-        .filter((item) => item && item.url)
-        .map((item) => ({
-          url: item.url,
-          method: (item.method || 'POST').toLowerCase(),
-          headers: item.headers || {},
-          body: typeof item.body === 'string' ? item.body : '',
-        }));
-
-      if (list.length === 0) {
-        log(`${src.note}: 没有可用数据，跳过`);
-        continue;
-      }
-
-      const value = JSON.stringify(list);
       const remarks = `${src.note} - Surge 存储导入`;
 
       try {
         const existing = await ql.getEnvs(src.env);
         if (existing.length === 0) {
           await ql.addEnv(src.env, value, remarks);
-          log(`导入 ${src.env}（${list.length} 条）`);
+          log(`导入 ${src.env}（${detail}）`);
           added++;
         } else if (existing[0].value === value) {
           log(`跳过 ${src.env}: 值未变化`);
           skipped++;
         } else {
           await ql.updateEnv(existing[0], src.env, value, remarks);
-          log(`更新 ${src.env}（${list.length} 条）`);
+          log(`更新 ${src.env}（${detail}）`);
           updated++;
         }
       } catch (e) {
