@@ -106,6 +106,10 @@ MESSAGE_KEYS = (
 
 REQUEST_TIMEOUT = 15
 
+# 请求失败（含 SSL 被断开）时重试，签到接口偶发 TLS 中断很常见
+RETRY_TIMES = 2
+RETRY_DELAY = 1.0
+
 
 @dataclass
 class Account:
@@ -385,12 +389,14 @@ def judge_result(status_code: int, payload: Any, text: str, site: SiteConfig) ->
             return passed, message or f"{site.success_path}={flag}"
 
     haystack = f"{message} {text}"
+    # 统一转小写比较：英文接口的文案大小写不固定（如 already signed in / Already Signed In）
+    haystack_lower = haystack.lower()
     for keyword in site.fail_keywords:
-        if keyword in haystack:
+        if keyword.lower() in haystack_lower:
             return False, message or f"命中失败关键字: {keyword}"
 
     for keyword in site.success_keywords:
-        if keyword in haystack:
+        if keyword.lower() in haystack_lower:
             return True, message or f"命中成功关键字: {keyword}"
 
     code = find_field(payload, CODE_KEYS)
@@ -419,18 +425,28 @@ def replay(account: Account, site: SiteConfig) -> AccountResult:
     if account.proxy:
         print(f"代理: {account.proxy}")
 
-    try:
-        response = requests.request(
-            method,
-            url,
-            headers=headers,
-            timeout=REQUEST_TIMEOUT,
-            proxies=proxies,
-            verify=False,
-            **kwargs,
-        )
-    except requests.RequestException as exc:
-        return AccountResult(False, f"请求失败: {shorten(exc)}")
+    response = None
+    last_error = None
+    for attempt in range(RETRY_TIMES + 1):
+        try:
+            response = requests.request(
+                method,
+                url,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+                proxies=proxies,
+                verify=False,
+                **kwargs,
+            )
+            break
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt < RETRY_TIMES:
+                print(f"请求失败，{RETRY_DELAY} 秒后重试（{attempt + 1}/{RETRY_TIMES}）: {shorten(exc, 100)}")
+                time.sleep(RETRY_DELAY)
+
+    if response is None:
+        return AccountResult(False, f"请求失败: {shorten(last_error)}")
 
     text = response.text or ""
     print(f"响应: HTTP {response.status_code} {shorten(text, 200)}")

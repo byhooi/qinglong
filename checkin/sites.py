@@ -36,8 +36,13 @@ COMMON_SUCCESS_KEYWORDS = (
     "重复签到",
     "已领取",
     "领取成功",
+    # 英文接口常见说法，匹配时统一转小写
+    "already signed in",
+    "already signed",
+    "already checked in",
+    "have signed",
+    "sign in success",
     "success",
-    "SUCCESS",
 )
 COMMON_FAIL_KEYWORDS = (
     "签到失败",
