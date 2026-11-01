@@ -142,6 +142,7 @@ class SiteConfig:
     success_codes: set | None = None
     success_keywords: tuple[str, ...] = ()
     fail_keywords: tuple[str, ...] = ()
+    message_path: str = ""  # 如 "header.resultMsg"，留空则自动递归查找
     cron: str = ""
     note: str = ""
     enabled: bool = True
@@ -332,9 +333,33 @@ def find_field(payload: Any, keys: tuple[str, ...], depth: int = 0) -> Any:
     return None
 
 
+def get_by_path(payload: Any, path: str) -> Any:
+    """按 a.b.c 形式取嵌套值，支持列表下标（如 data.items.0.msg）"""
+    current = payload
+    for part in path.split("."):
+        if isinstance(current, list):
+            try:
+                current = current[int(part)]
+            except (ValueError, IndexError):
+                return None
+        elif isinstance(current, dict):
+            if part not in current:
+                return None
+            current = current[part]
+        else:
+            return None
+    return current
+
+
 def judge_result(status_code: int, payload: Any, text: str, site: SiteConfig) -> tuple[bool, str]:
     """判定签到是否成功，返回 (是否成功, 说明)"""
-    message = shorten(find_field(payload, MESSAGE_KEYS) or "")
+    raw_message = None
+    if site.message_path:
+        raw_message = get_by_path(payload, site.message_path)
+    if raw_message is None:
+        # 未配置路径或路径失效时，退回通用字段查找
+        raw_message = find_field(payload, MESSAGE_KEYS)
+    message = shorten(raw_message or "")
 
     if status_code >= 400:
         return False, f"HTTP {status_code} {message}".strip()

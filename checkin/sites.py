@@ -54,6 +54,9 @@ SITES: dict[str, SiteConfig] = {
         default_method="POST",
         success_keywords=COMMON_SUCCESS_KEYWORDS,
         fail_keywords=COMMON_FAIL_KEYWORDS,
+        # 响应结构固定为 {body:{}, header:{resultCode, resultMsg}}，
+        # 消息只在 header 下，精确取比递归猜可靠
+        message_path="header.resultMsg",
         cron="30 8 * * *",
     ),
     "sdl": SiteConfig(
