@@ -271,6 +271,24 @@ async function handleCapture() {
     return;
   }
 
+  // 有些接口是适配层入口，多种业务共用一个 URL，靠 body 里的 action 区分。
+  // 这种在原 akino 模块里用 bodyRegx 过滤，同步侧必须做同样的判断，
+  // 否则查询类请求也会把数据写进去。
+  const bodyRegx = (args.bodyRegx || '').trim();
+  if (bodyRegx && $request.body) {
+    let matched = true;
+    try {
+      matched = new RegExp(bodyRegx).test(String($request.body));
+    } catch (e) {
+      log(`${ckName}: bodyRegx 无效，跳过（${e.message || e}）`);
+      return;
+    }
+    if (!matched) {
+      log(`${ckName}: body 不匹配 bodyRegx，跳过`);
+      return;
+    }
+  }
+
   const item = {
     url: $request.url,
     method: ($request.method || 'GET').toLowerCase(),
