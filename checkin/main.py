@@ -2,6 +2,8 @@
 """
 签到重放入口
 
+⚠️ 青龙任务的「命令」字段必须带站点名，只写 python3 checkin/main.py 会报错退出。
+
 青龙任务名与命令
     每个站点单独建一条任务，互不影响：
         python3 checkin/main.py mylink      定时 30 8 * * *
@@ -64,9 +66,22 @@ def print_sites() -> None:
 
 
 def main(argv: list[str]) -> int:
-    if not argv or argv[0] in ("-h", "--help"):
+    if argv and argv[0] in ("-h", "--help"):
         print(__doc__)
         return 0
+
+    # 青龙任务命令漏写站点名时最常见，这里必须报错而不是静默打印帮助，
+    # 否则退出码为 0，面板显示成功，问题会被掩盖。
+    if not argv:
+        print("=" * 50)
+        print("缺少站点名参数，命令格式不对")
+        print("正确写法: python3 checkin/main.py <站点名>")
+        print("例如:     python3 checkin/main.py mylink")
+        print("跑全部:   python3 checkin/main.py all")
+        print("查列表:   python3 checkin/main.py --list")
+        print("=" * 50)
+        print(f"可用站点: {', '.join(SITES)}")
+        return 2
 
     target = argv[0].strip().lower()
 
