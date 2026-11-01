@@ -27,6 +27,10 @@ const SCRIPT_VERSION = '1.0.0';
 const STORE_KEY = 'akino';
 const ENV_PREFIX = 'CHECKIN_';
 
+// 自动同步开关，与 jdcookie 的 auto_sync_jdcookie_ql 同一套路：
+// 未设置时默认开启，BoxJS 里关掉才停止抓包即时同步
+const AUTO_SYNC_KEY = 'auto_sync_akino_ql';
+
 // 与桌面 s/ 目录下 10 个模块的 ckName 一一对应
 const CK_NAMES = [
   'mylink',   // mylink
@@ -229,6 +233,88 @@ function readAkinoRecords() {
   return { records: {}, error: `存储结构异常，没有找到 record 字段（顶层键: ${Object.keys(store || {}).join(', ')}）` };
 }
 
+// ---------- 抓包即时同步 ----------
+
+function parseArguments() {
+  const args = {};
+  if (typeof $argument === 'string' && $argument) {
+    $argument.split('&').forEach((pair) => {
+      const idx = pair.indexOf('=');
+      if (idx > 0) {
+        args[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+      }
+    });
+  }
+  return args;
+}
+
+function autoSyncEnabled() {
+  const value = $persistentStore.read(AUTO_SYNC_KEY);
+  // 与 jdcookie 一致：未设置视为开启，BoxJS 里关掉才停
+  return value === null || value === undefined || value === '' || value === 'true' || value === true;
+}
+
+/**
+ * 抓包模式：作为 akino.js 的并行脚本挂在同一个 pattern 上，抓到请求就直接推青龙。
+ * 直接用 $request 构造数据，不读 akino 的持久化存储，因此不依赖两个脚本的执行顺序。
+ */
+async function handleCapture() {
+  const args = parseArguments();
+  const ckName = (args.ckName || '').trim();
+
+  if (!ckName) {
+    log('抓包模式缺少 ckName 参数，跳过');
+    return;
+  }
+  if (!autoSyncEnabled()) {
+    log(`${ckName}: 自动同步已关闭，跳过`);
+    return;
+  }
+
+  const item = {
+    url: $request.url,
+    method: ($request.method || 'GET').toLowerCase(),
+    headers: $request.headers || {},
+    body: $request.body || '',
+  };
+
+  const accountIndex = parseInt(args.accountIndex || '0', 10) || 0;
+  const envName = `${ENV_PREFIX}${ckName.toUpperCase()}`;
+
+  const ql = new QLPanel();
+  ql.checkConfig();
+
+  const existing = await ql.getEnvs(envName);
+
+  let accounts = [];
+  if (existing.length > 0) {
+    try {
+      accounts = JSON.parse(existing[0].value);
+    } catch (e) {
+      accounts = [];
+    }
+    if (!Array.isArray(accounts)) accounts = [];
+  }
+
+  // 多账号按 accountIndex 就地替换，避免每次抓包把其他账号冲掉
+  while (accounts.length <= accountIndex) accounts.push(null);
+  accounts[accountIndex] = item;
+  accounts = accounts.filter(Boolean);
+
+  const value = JSON.stringify(accounts);
+  const remarks = `${accounts.length} 个账号 - Surge 抓包同步`;
+
+  if (existing.length === 0) {
+    await ql.addEnv(envName, value, remarks);
+    log(`${ckName}: 新增 ${envName}（${accounts.length} 个账号）`);
+  } else if (existing[0].value === value) {
+    log(`${ckName}: 值未变化，跳过`);
+  } else {
+    await ql.updateEnv(existing[0], envName, value, remarks);
+    log(`${ckName}: 已更新 ${envName}（${accounts.length} 个账号）`);
+  }
+}
+
 // ---------- 主流程 ----------
 
 async function main() {
@@ -321,7 +407,18 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.log(redact(`脚本执行出错: ${err?.message || err}`));
-  $done({});
-});
+// 抓包请求走即时同步，cron / BoxJS 手动按钮走全量同步
+if (typeof $request !== 'undefined') {
+  handleCapture()
+    .catch((err) => {
+      console.log(redact(`抓包同步出错: ${err?.message || err}`));
+    })
+    .finally(() => {
+      $done({});
+    });
+} else {
+  main().catch((err) => {
+    console.log(redact(`脚本执行出错: ${err?.message || err}`));
+    $done({});
+  });
+}
