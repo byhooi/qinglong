@@ -183,6 +183,19 @@ SITES: dict[str, SiteConfig] = {
         message_path="message",
         cron="2 8 * * *",
     ),
+    "1hai": SiteConfig(
+        key="1hai",
+        name="一嗨租车签到",
+        env_names=("CHECKIN_1HAI",),
+        default_url="https://app.1hai.cn/SignCenter/UserAssets/SignIn",
+        default_method="POST",
+        # 响应是加密的 {"Result":"..."}，没有可判定的业务码，
+        # 只能靠 HTTP 状态 + 是否存在 Result 字段兜底
+        success_keywords=(),
+        fail_keywords=(),
+        cron="15 8 * * *",
+        note="请求体含加密随机数与签名，抓到的数据可能只能用一次，失败需重新抓包",
+    ),
 }
 
 

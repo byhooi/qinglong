@@ -45,6 +45,12 @@ const CK_NAMES = [
   'mixpark',  // 钧濠
 ];
 
+// 非 akino 架构的脚本，数据存在各自的 key 里，读不到 akino 存储，
+// 需要单独从对应 key 导入。新增这类站点时在这里加一条。
+const IMPORT_SOURCES = [
+  { key: 'byhooi_1hai_sign_request', env: 'CHECKIN_1HAI', note: '一嗨租车' },
+];
+
 const QL_API = {
   LOGIN: '/open/auth/token',
   ENVS: '/open/envs',
@@ -344,8 +350,8 @@ async function main() {
   try {
     const { records, error } = readAkinoRecords();
     if (error) {
-      summary.push(`失败: ${error}`);
-      return;
+      // akino 存储为空不应中断，其他存储源（IMPORT_SOURCES）可能仍有数据
+      log(`${error}，继续检查其他存储源`);
     }
 
     const available = CK_NAMES.filter((ck) => {
@@ -353,12 +359,14 @@ async function main() {
       return data.length > 0;
     });
 
-    if (available.length === 0) {
+    const importable = IMPORT_SOURCES.filter((src) => !!$persistentStore.read(src.key));
+
+    if (available.length === 0 && importable.length === 0) {
       summary.push('失败: 存储里没有任何签到数据');
       return;
     }
 
-    log(`发现 ${available.length} / ${CK_NAMES.length} 个站点有数据`);
+    log(`akino 站点 ${available.length} / ${CK_NAMES.length} 有数据，其他存储源 ${importable.length} 个`);
 
     const ql = new QLPanel();
     ql.checkConfig();
@@ -407,6 +415,62 @@ async function main() {
       }
 
       // 避免请求过快被青龙限流
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+
+    // 非 akino 架构的脚本：直接从各自的存储 key 导入，把 Surge 里现有的 token 搬过去
+    for (const src of IMPORT_SOURCES) {
+      const raw = $persistentStore.read(src.key);
+      if (!raw) {
+        log(`${src.note}: Surge 里没有数据，跳过`);
+        continue;
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        log(`${src.note}: 存储不是合法 JSON，跳过`);
+        continue;
+      }
+
+      const list = (Array.isArray(parsed) ? parsed : [parsed])
+        .filter((item) => item && item.url)
+        .map((item) => ({
+          url: item.url,
+          method: (item.method || 'POST').toLowerCase(),
+          headers: item.headers || {},
+          body: typeof item.body === 'string' ? item.body : '',
+        }));
+
+      if (list.length === 0) {
+        log(`${src.note}: 没有可用数据，跳过`);
+        continue;
+      }
+
+      const value = JSON.stringify(list);
+      const remarks = `${src.note} - Surge 存储导入`;
+
+      try {
+        const existing = await ql.getEnvs(src.env);
+        if (existing.length === 0) {
+          await ql.addEnv(src.env, value, remarks);
+          log(`导入 ${src.env}（${list.length} 条）`);
+          added++;
+        } else if (existing[0].value === value) {
+          log(`跳过 ${src.env}: 值未变化`);
+          skipped++;
+        } else {
+          await ql.updateEnv(existing[0], src.env, value, remarks);
+          log(`更新 ${src.env}（${list.length} 条）`);
+          updated++;
+        }
+      } catch (e) {
+        const reason = e?.message || String(e);
+        log(`失败 ${src.env}: ${reason}`);
+        failed.push(`${src.env}: ${reason}`);
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 400));
     }
 
