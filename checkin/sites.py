@@ -19,8 +19,21 @@ from __future__ import annotations
 from replay import SiteConfig
 
 # 通用成功/失败关键字，各站点可覆盖。
+# 「已签到」类文案一律算成功：重复签到不是故障，不该让青龙标红。
 # 失败词特意写窄，避免响应正文里出现「失败」二字就误判。
-COMMON_SUCCESS_KEYWORDS = ("签到成功", "签到完成", "已签到", "领取成功", "success", "SUCCESS")
+COMMON_SUCCESS_KEYWORDS = (
+    "签到成功",
+    "签到完成",
+    "已签到",
+    "已经签到",
+    "今日已签到",
+    "不可重复签到",
+    "重复签到",
+    "已领取",
+    "领取成功",
+    "success",
+    "SUCCESS",
+)
 COMMON_FAIL_KEYWORDS = (
     "签到失败",
     "token失效",

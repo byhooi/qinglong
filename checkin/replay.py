@@ -80,8 +80,29 @@ DEFAULT_HEADERS = {
 # 通用成功码，各站点可用 SiteConfig.success_codes 覆盖
 SUCCESS_CODES = {0, 200, "0", "200", "true", "True", "success", "ok"}
 
-CODE_KEYS = ("code", "errno", "errCode", "errcode", "ret", "retcode", "status", "resultCode")
-MESSAGE_KEYS = ("msg", "message", "errmsg", "errMsg", "info", "desc", "error", "reason")
+CODE_KEYS = (
+    "code",
+    "errno",
+    "errCode",
+    "errcode",
+    "ret",
+    "retcode",
+    "status",
+    "resultCode",
+)
+MESSAGE_KEYS = (
+    "msg",
+    "message",
+    "errmsg",
+    "errMsg",
+    "info",
+    "desc",
+    "error",
+    "reason",
+    "resultMsg",
+    "resultMessage",
+    "errormsg",
+)
 
 REQUEST_TIMEOUT = 15
 
