@@ -7219,13 +7219,14 @@ def do_notify(users):
     if notify_content:
         content = "\n".join(notify_content)
         # 原作者脚本假定存在 notify.py, 但本仓库用的是 sendNotify.py。
-        # 两个都试, 都不在才报错 —— 否则推送会静默失效, 任务成功却收不到通知。
+        # 两者读同一套推送环境变量, 误加载不会报错只会静默用错实现,
+        # 所以固定让仓库自带的 sendNotify 优先, notify 仅作兜底。
         import importlib
         script_dir = os.path.dirname(os.path.abspath(__file__))
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
         send = None
-        for module_name in ("notify", "sendNotify"):
+        for module_name in ("sendNotify", "notify"):
             try:
                 send = getattr(importlib.import_module(module_name), "send")
                 break
