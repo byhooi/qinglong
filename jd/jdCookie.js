@@ -1,6 +1,8 @@
 /*
 此文件为Node.js专用。其他用户请忽略
  */
+// 任务中文名，供青龙拉库时自动建任务使用；本地 node 直接运行时无 Env 全局，跳过
+typeof Env !== 'undefined' && new Env('京东CK管理');
 //此处填写京东账号cookie。
 let CookieJDs = [
     '',//账号一ck,例:pt_key=XXX;pt_pin=XXX;
