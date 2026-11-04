@@ -31,7 +31,7 @@ project_root = current_dir.parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from sendNotify import send
+    from notify import send
 except:
     def send(title, content):
         print(f"\n{title}\n{content}")

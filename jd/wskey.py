@@ -46,15 +46,15 @@ except Exception as e:
 os.environ['no_proxy'] = '*'  # 走直连, 避免容器内的代理设置干扰京东接口
 requests.packages.urllib3.disable_warnings()  # 抑制证书告警
 
-# 脚本位于 jd/ 子目录, 推送模块 sendNotify.py 在仓库根目录, 需要把根目录加入模块搜索路径
+# 脚本位于 jd/ 子目录, 推送模块 notify.py 在仓库根目录, 需要把根目录加入模块搜索路径
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 try:
-    from sendNotify import send  # 导入项目根目录的 sendNotify 推送模块
+    from notify import send  # 导入项目根目录的 notify 推送模块
 except Exception as err:
     logger.debug(str(err))  # 调试日志输出
-    logger.info("未找到 sendNotify.py, 通知仅输出到日志")  # 标准日志输出
+    logger.info("未找到 notify.py, 通知仅输出到日志")  # 标准日志输出
 
     def send(title, content):  # 降级处理: 无推送模块时仅打印, 避免 ql_send 报 NameError
         print(f"\n{title}\n{content}")

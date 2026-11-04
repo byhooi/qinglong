@@ -4,7 +4,7 @@ cron "10 8,22 * * *" jd_CheckCK.js, tag:京东CK检测by-ccwav
 // 原版说明参考 https://github.com/ccwav/QLScript2, 本文件为适配本仓库的精简版
 //
 // 功能: 检测青龙面板中所有 JD_COOKIE 的有效性, 失效自动禁用, 恢复可选自动启用, 结果按分组汇总后统一推送
-// 依赖: 仓库根目录 sendNotify.js (推送, 缺失时降级为日志输出)、同目录 function/ql.js (青龙 API 封装)
+// 依赖: 仓库根目录 notify.js (推送, 缺失时降级为日志输出)、同目录 function/ql.js (青龙 API 封装)
 //       function/ql.js 只需提供 getEnvs / getstatus / DisableCk / EnableCk 四个方法, 可直接使用 ccwav/QLScript2 仓库的同名文件
 // 环境变量 (均可选):
 //   CHECKCK_SHOWSUCCESSCK  = true       推送中附带有效账号列表
@@ -13,7 +13,7 @@ cron "10 8,22 * * *" jd_CheckCK.js, tag:京东CK检测by-ccwav
 //   CHECKCK_CKNOWARNERROR  = true       检测出错的账号不触发推送
 //   CHECKCK_ALLNOTIFY      = 文本        在推送内容末尾附加的温馨提示
 //   BEANCHANGE_USERGP2/3/4 = pin1&pin2  按 pt_pin 分组, 每组单独汇总推送, 未分组账号走默认推送
-//   WP_APP_TOKEN_ONE       = token      WxPusher 一对一推送 (需 sendNotify.js 提供 sendNotifybyWxPucher, 本仓库版本不支持时自动跳过)
+//   WP_APP_TOKEN_ONE       = token      WxPusher 一对一推送 (需 notify.js 提供 sendNotifybyWxPucher, 本仓库版本不支持时自动跳过)
 //   QL_PORT                = 5700       青龙面板端口 (仅本仓库自带的 function/ql.js 读取, 上游 ql.js 固定走 5600)
 const $ = new Env('CK检测');
 const {
@@ -25,9 +25,9 @@ const {
 
 let notify = null;
 try {
-    notify = require('../sendNotify'); // 脚本位于 jd/ 子目录, 推送模块在仓库根目录
+    notify = require('../notify'); // 脚本位于 jd/ 子目录, 推送模块在仓库根目录
 } catch (e) {
-    console.log(`⚠️ 未加载 sendNotify.js, 通知仅输出到日志: ${e.message}`);
+    console.log(`⚠️ 未加载 notify.js, 通知仅输出到日志: ${e.message}`);
 }
 
 const envFlag = (name) => String(process.env[name] || '').trim().toLowerCase() === 'true';
@@ -61,7 +61,7 @@ const buckets = [];
 });
 const defaultBucket = newBucket($.name, []);
 
-// 汇总推送 (缺少 sendNotify.js 时只打印)
+// 汇总推送 (缺少 notify.js 时只打印)
 async function pushNotify(title, content, params) {
     if (notify && typeof notify.sendNotify === 'function') {
         try {
@@ -74,7 +74,7 @@ async function pushNotify(title, content, params) {
     }
 }
 
-// WxPusher 一对一推送: 仅在设置 WP_APP_TOKEN_ONE 且 sendNotify.js 支持时发送, 否则跳过而不是报错
+// WxPusher 一对一推送: 仅在设置 WP_APP_TOKEN_ONE 且 notify.js 支持时发送, 否则跳过而不是报错
 async function notifyOne(title, content, pin) {
     if (!WP_APP_TOKEN_ONE) return;
     if (notify && typeof notify.sendNotifybyWxPucher === 'function') {
@@ -84,7 +84,7 @@ async function notifyOne(title, content, pin) {
             console.log(`⚠️ 一对一推送失败: ${e.message}`);
         }
     } else {
-        console.log(`⚠️ 当前 sendNotify.js 不支持 WxPusher 一对一推送(sendNotifybyWxPucher), 已跳过 ${pin} 的单独通知`);
+        console.log(`⚠️ 当前 notify.js 不支持 WxPusher 一对一推送(sendNotifybyWxPucher), 已跳过 ${pin} 的单独通知`);
     }
 }
 

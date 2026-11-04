@@ -27,7 +27,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 try:
-    from sendNotify import send
+    from notify import send
 except Exception:
     def send(title, content):
         print(f"\n{title}\n{content}")
