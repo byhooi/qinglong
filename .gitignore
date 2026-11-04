@@ -26,6 +26,13 @@ config.toml
 *.har
 *.saz
 
+# 联通脚本运行时产物
+# unicom_token_cache.json 存的是 token_online（等同账号凭证），绝不能入库
+unicom_token_cache.json
+unicom_prize_cache.json
+unicom_hometown_material.jpg
+face_images/
+
 # Logs
 *.log
 logs/
