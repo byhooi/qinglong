@@ -18,7 +18,14 @@ async function request(url, options = {}) {
   }
   const { json, form, body, headers = {}, ...rest } = options;
 
-  const finalHeaders = { ...headers };
+  // header 名统一小写再合并。原写法直接 {...headers} 再用小写键补 content-type，
+  // 调用方传 'Content-Type' 时会同时存在两条同名头：HTTP/1.1 下服务端容忍，
+  // 但走 HTTP/2（如经代理访问 api.telegram.org）会直接报
+  // ERR_HTTP2_HEADER_SINGLE_VALUE: Header field "content-type" must only have a single value。
+  const finalHeaders = {};
+  for (const [k, v] of Object.entries(headers)) {
+    finalHeaders[String(k).toLowerCase()] = v;
+  }
   let finalBody = body;
 
   if (json) {
