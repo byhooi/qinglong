@@ -1,8 +1,21 @@
 const querystring = require('node:querystring');
-const { request: undiciRequest, ProxyAgent, FormData } = require('undici');
+
+// undici 改为可选依赖：未安装时模块仍可正常 require，不影响调用方脚本启动，
+// 只在实际推送时返回明确错误。原写法在文件顶部硬性 require，缺包会让
+// 整份脚本 MODULE_NOT_FOUND 直接挂掉，而不是仅推送失效。
+let undiciRequest, ProxyAgent, FormData;
+try {
+  ({ request: undiciRequest, ProxyAgent, FormData } = require('undici'));
+} catch (e) {
+  // 缺包时保持静默，错误信息留到 request() 里抛出，便于定位
+}
+
 const timeout = 15000;
 
 async function request(url, options = {}) {
+  if (!undiciRequest) {
+    throw new Error('notify.js 依赖 npm 包 undici，请在青龙「依赖管理」中为 Node 安装后重试');
+  }
   const { json, form, body, headers = {}, ...rest } = options;
 
   const finalHeaders = { ...headers };
