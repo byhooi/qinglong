@@ -223,6 +223,9 @@ def load_accounts() -> list[Account]:
         return []
 
     raw_value = os.getenv(env_name, "").strip()
+    # V2EX_PROXY 作为全局默认代理，账号级 proxy 字段优先。
+    # 国内直连 www.v2ex.com 常被 DNS 污染到无效 IP，需经代理访问。
+    default_proxy = os.getenv("V2EX_PROXY", "").strip()
     accounts: list[Account] = []
 
     if env_name == "v2ex":
@@ -244,24 +247,26 @@ def load_accounts() -> list[Account]:
                         Account(
                             account_name=str(item.get("account_name") or f"账号{index}"),
                             cookie=cookie,
-                            proxy=str(item.get("proxy", "")).strip(),
+                            proxy=str(item.get("proxy", "")).strip() or default_proxy,
                         )
                     )
         elif isinstance(config, list):
             for index, item in enumerate(config, start=1):
                 if isinstance(item, dict):
                     cookie = str(item.get("cookie", "")).strip()
-                    proxy = str(item.get("proxy", "")).strip()
+                    proxy = str(item.get("proxy", "")).strip() or default_proxy
                     account_name = str(item.get("account_name") or f"账号{index}")
                 else:
                     cookie = str(item).strip()
-                    proxy = ""
+                    proxy = default_proxy
                     account_name = f"账号{index}"
                 if cookie:
                     accounts.append(Account(account_name=account_name, cookie=cookie, proxy=proxy))
         else:
             for index, cookie in enumerate(split_cookie_accounts(raw_value), start=1):
-                accounts.append(Account(account_name=f"账号{index}", cookie=cookie))
+                accounts.append(
+                    Account(account_name=f"账号{index}", cookie=cookie, proxy=default_proxy)
+                )
     else:
         for index, cookie in enumerate(split_cookie_accounts(raw_value), start=1):
             accounts.append(Account(account_name=f"账号{index}", cookie=cookie))
