@@ -25,7 +25,7 @@ const {
 
 let notify = null;
 try {
-    notify = require('../notify'); // 脚本位于 jd/ 子目录, 推送模块在仓库根目录
+    notify = require('../sendNotify'); // 脚本位于 jd/ 子目录, 推送模块在仓库根目录
 } catch (e) {
     console.log(`⚠️ 未加载 notify.js, 通知仅输出到日志: ${e.message}`);
 }
