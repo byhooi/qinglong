@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
-new Env('wskey转换');
-Cron:"58 21,9 * * *";
+任务名称
+name: wskey转换
+定时规则
+cron: 58 21,9 * * *
 
 京东 wskey 本地转换: 读取青龙环境变量 JD_WSCK, 转换为 JD_COOKIE 并写回青龙面板 (仅能在青龙容器内运行)
 环境变量:

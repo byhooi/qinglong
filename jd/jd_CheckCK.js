@@ -1,5 +1,8 @@
-/*
-cron "10 8,22 * * *" jd_CheckCK.js, tag:京东CK检测by-ccwav
+/**
+ * 任务名称
+ * name: 京东CK检测
+ * 定时规则
+ * cron: 10 8,22 * * *
  */
 // 原版说明参考 https://github.com/ccwav/QLScript2, 本文件为适配本仓库的精简版
 //

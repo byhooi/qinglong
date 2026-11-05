@@ -1,5 +1,7 @@
 """
-new Env('V2EX 每日签到');
+任务名称
+name: V2EX 每日签到
+定时规则
 cron: 15 8 * * *
 version: v2.1.0
 updated: 2026-10-22
