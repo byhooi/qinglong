@@ -268,8 +268,11 @@ def load_accounts() -> list[Account]:
                     Account(account_name=f"账号{index}", cookie=cookie, proxy=default_proxy)
                 )
     else:
+        # V2EX_COOKIE / v2ex_cookie 等纯 cookie 变量名走这里，同样需要默认代理
         for index, cookie in enumerate(split_cookie_accounts(raw_value), start=1):
-            accounts.append(Account(account_name=f"账号{index}", cookie=cookie))
+            accounts.append(
+                Account(account_name=f"账号{index}", cookie=cookie, proxy=default_proxy)
+            )
 
     return accounts
 
