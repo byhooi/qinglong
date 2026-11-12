@@ -3,7 +3,7 @@
 name: V2EX 每日签到
 定时规则
 cron: 15 8 * * *
-version: v2.1.1
+version: v2.1.2
 updated: 2026-11-12
 """
 
@@ -33,6 +33,8 @@ V2EX 每日签到脚本
 领取请求发了但没确认到账，一律按失败上报 —— 宁可误报失败，也不要谎报成功。
 
 版本变更:
+  v2.1.2 (2026-11-12) 余额只配到部分币种时输出原文片段，便于区分「该项为 0 不渲染」
+                      与「配对失败」
   v2.1.1 (2026-11-12) 余额解析改为按币种图标配对，修复通知里余额行消失;
                       解析失败时输出可定位的日志
   v2.1.0 (2026-10-22) 启动首屏增加版本号与调试状态;
@@ -41,8 +43,8 @@ V2EX 每日签到脚本
   v1.x                旧版，success 恒为 True 且会把 /signout 当签到入口
 """
 
-VERSION = "2.1.1"
-BUILD = "2026-11-12.1"
+VERSION = "2.1.2"
+BUILD = "2026-11-12.2"
 
 import json
 import os
@@ -394,6 +396,10 @@ def extract_balance(html: str) -> str:
     # 只展示真的解析到的币种：缺哪一项就少写一项，绝不瞎补 0
     parts = [f"{values[key]} {label}" for key, label in BALANCE_CURRENCY_ORDER if key in values]
     if parts:
+        if DEBUG and len(values) < 3:
+            # 少币种时把原文片段打出来，否则看不出是「该项为 0 不渲染」还是「配对失败」
+            icons = len(BALANCE_ICON_PATTERN.findall(fragment))
+            print(f"余额只配到 {len(values)} 项（币种图标 {icons} 个），片段: {excerpt(fragment)}")
         return "，".join(parts)
 
     numbers = [value for value in re.findall(r"\d+", strip_tags(fragment)) if len(value) <= 12]
