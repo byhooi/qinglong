@@ -3,8 +3,8 @@
 name: V2EX 每日签到
 定时规则
 cron: 15 8 * * *
-version: v2.1.0
-updated: 2026-10-22
+version: v2.1.1
+updated: 2026-11-12
 """
 
 """
@@ -33,14 +33,16 @@ V2EX 每日签到脚本
 领取请求发了但没确认到账，一律按失败上报 —— 宁可误报失败，也不要谎报成功。
 
 版本变更:
+  v2.1.1 (2026-11-12) 余额解析改为按币种图标配对，修复通知里余额行消失;
+                      解析失败时输出可定位的日志
   v2.1.0 (2026-10-22) 启动首屏增加版本号与调试状态;
                       修正 V2EX_DEBUG 开关解析 (原 bool() 导致 =0/=false 关不掉)
   v2.0.0 (2026-10-22) 修复谎报成功与入口误匹配，见 v2ex/HANDOFF.md
   v1.x                旧版，success 恒为 True 且会把 /signout 当签到入口
 """
 
-VERSION = "2.1.0"
-BUILD = "2026-10-22.2"
+VERSION = "2.1.1"
+BUILD = "2026-11-12.1"
 
 import json
 import os
@@ -134,10 +136,17 @@ REDEEM_PATTERN = re.compile(r"/mission/daily/redeem\?once=[A-Za-z0-9_%.-]+")
 # 余额区真实结构 (HAR 确认):
 #   <div id="money"><a href="/balance" class="balance_area" style="">1 <img alt="G" /> 93 ...</a></div>
 # 类名挂在 <a> 上且没有 bigger；旧版是 <div class="balance_area bigger">，两种都收。
+# 单双引号都认：模板换过引号风格，只认双引号会整块匹配不到。
 BALANCE_AREA_PATTERN = re.compile(
-    r'class="[^"]*\bbalance_area\b[^"]*"[^>]*>(.*?)</(?:a|div)>',
-    re.S,
+    r'''class=["'][^"']*\bbalance_area\b[^"']*["'][^>]*>(.*?)</(?:a|div)>''',
+    re.S | re.I,
 )
+# 币种图标: G=金 / S=银 / B=铜。
+# 不再依赖「数字一定在图标前面」这个假设，按相邻关系配对，多一个数字也不会错位。
+BALANCE_ICON_PATTERN = re.compile(r"<img\b[^>]*>", re.I)
+BALANCE_ALT_PATTERN = re.compile(r'''\balt=["']?([GSB])["']?''', re.I)
+BALANCE_TOKEN_PATTERN = re.compile(r"(?P<num>\d+(?:\.\d+)?)|〔(?P<alt>[GSB])〕")
+BALANCE_CURRENCY_ORDER = (("G", "金币"), ("S", "银币"), ("B", "铜币"))
 STREAK_PATTERN = re.compile(r"已连续登录\s*(\d+)\s*天")
 # 每日奖励文案: 「已成功领取每日登录奖励 8 铜币」/「20261022 的每日登录奖励 8 铜币」
 REWARD_PATTERNS = (
@@ -317,6 +326,50 @@ def extract_reward(*texts: str) -> str:
     return ""
 
 
+def icon_alt(tag: str) -> str:
+    """取出 <img> 上的币种标记（G/S/B），取不到返回空串。"""
+    matched = BALANCE_ALT_PATTERN.search(tag)
+    return matched.group(1).upper() if matched else ""
+
+
+def pair_balance_values(fragment: str) -> dict[str, str]:
+    """按「数字紧邻币种图标」配对，得到 {'G': '1', 'S': '94', 'B': '3'}。
+
+    先把 <img> 换成 〔G〕/〔S〕/〔B〕 标记、其余标签整体删掉，
+    这样 img 属性里的 height="16"、src 里的 @2x 不会被当成余额数字。
+    数字在图标前（1 <img alt="G" />）或图标在前（<img alt="G" /> 1）都能配上。
+    """
+    marked = BALANCE_ICON_PATTERN.sub(lambda m: f" 〔{icon_alt(m.group(0))}〕 ", fragment)
+    marked = re.sub(r"<[^>]+>", " ", marked)
+    tokens: list[tuple[str, str]] = []
+    for matched in BALANCE_TOKEN_PATTERN.finditer(marked):
+        if matched.group("num"):
+            tokens.append(("num", matched.group("num")))
+        else:
+            tokens.append(("alt", matched.group("alt")))
+
+    values: dict[str, str] = {}
+    pending_num = ""
+    pending_alt = ""
+    for kind, value in tokens:
+        if kind == "num":
+            if len(value) > 12:
+                continue
+            if pending_alt:
+                values.setdefault(pending_alt, value)
+                pending_alt = ""
+            else:
+                pending_num = value
+        else:
+            # 币种标记：配最近一个还没用掉的数字（数字在前、数字在后都能配上）
+            if pending_num:
+                values.setdefault(value, pending_num)
+                pending_num = ""
+            else:
+                pending_alt = value
+    return values
+
+
 def extract_balance(html: str) -> str:
     """从 balance_area 解析 金/银/铜。
 
@@ -325,17 +378,28 @@ def extract_balance(html: str) -> str:
         1 <img ... alt="G" /> 93 <img ... alt="S" /> 84 <img ... alt="B" /></a></div>
 
     注意余额区是 <a> 而不是 <div>，类名只有 balance_area、没有 bigger，
-    所以按「class 含 balance_area 的标签」取整段，再从里面按序取数字。
-    只认恰好 3 个数字：少一项时无法判断是哪一种币为 0，宁可不显示也不要标错。
+    所以按「class 含 balance_area 的标签」取整段再解析。
+    优先按图标 alt 配对（顺序无关、多一个数字也不会错位）；
+    图标缺失时才退化成「剥标签后按序取数字，只认恰好 3 个」，
+    宁可不显示也不要标错币种。
     """
     matched = BALANCE_AREA_PATTERN.search(html)
     if not matched:
+        if DEBUG:
+            print("页面里没找到 balance_area，余额区可能又改版了")
         return ""
-    # 先剥标签再取数字：img 的 height="16"、src 里的 @2x 都带数字，
-    # 直接对原始片段 findall 会把它们一起算进来
-    inner_text = strip_tags(matched.group(1))
-    numbers = [value for value in re.findall(r"\d+", inner_text) if len(value) <= 12]
+
+    fragment = matched.group(1)
+    values = pair_balance_values(fragment)
+    # 只展示真的解析到的币种：缺哪一项就少写一项，绝不瞎补 0
+    parts = [f"{values[key]} {label}" for key, label in BALANCE_CURRENCY_ORDER if key in values]
+    if parts:
+        return "，".join(parts)
+
+    numbers = [value for value in re.findall(r"\d+", strip_tags(fragment)) if len(value) <= 12]
     if len(numbers) != 3:
+        if DEBUG:
+            print(f"余额区解析失败，数字个数 {len(numbers)}，片段: {excerpt(fragment)}")
         return ""
     golden, silver, bronze = numbers
     return f"{golden} 金币，{silver} 银币，{bronze} 铜币"
@@ -447,8 +511,11 @@ class V2EXClient:
         today = extract_reward(*claim_texts, daily_text)
         balance = extract_balance(daily_html)
         if not balance:
+            print("daily 页没解析到余额，改从 /balance 兜底")
             today_from_balance, balance = self.get_balance()
             today = today or today_from_balance
+        if not balance:
+            print("余额解析失败：签到结果照常上报，但通知里不会有余额行")
         return AccountResult(
             account_name=self.account.account_name,
             success=True,
